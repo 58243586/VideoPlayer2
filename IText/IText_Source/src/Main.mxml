@@ -1,0 +1,93 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:Application xmlns:fx="http://ns.adobe.com/mxml/2009"
+               xmlns:s="library://ns.adobe.com/flex/spark"
+               xmlns:mx="library://ns.adobe.com/flex/mx"
+               width="100%"
+               xmlns:views="itext.views.*"
+               xmlns:components="itext.components.*"
+               creationComplete="application1_creationCompleteHandler(event)"
+               xmlns:ns1="*">
+    <s:layout>
+        <s:VerticalLayout horizontalAlign="center"
+                          verticalAlign="middle" />
+    </s:layout>
+    <fx:Style source="Main.css" />
+    <fx:Declarations>
+        <!-- 将非可视元素（例如服务、值对象）放在此处 -->
+    </fx:Declarations>
+    <fx:Script>
+        <![CDATA[
+            import flashx.textLayout.operations.SplitParagraphOperation;
+            
+            import itext.events.InTextEditerEvent;
+            import itext.framework.IconFactory;
+            
+            import mx.controls.Image;
+            import mx.core.UIComponent;
+            import mx.events.FlexEvent;
+            
+            import spark.components.TextArea;
+            import spark.events.TextOperationEvent;
+
+            [Bindable]
+            private var itextXMLString:String = "";
+
+            [Bindable]
+            private var itextNoteXML:String = "";
+
+            protected function application1_creationCompleteHandler(event:FlexEvent):void
+            {
+                ite.addEventListener(InTextEditerEvent.EDITER_CHANGE, ite_xmlChangeHandler);
+
+                itextTool.manageInTextEditer(ite);
+            }
+
+            private function ite_xmlChangeHandler(e:Event):void
+            {
+                itextXMLString = ite.getIText().toXMLString();
+            }
+
+            protected function btnNarrow_clickHandler(event:MouseEvent):void
+            {
+                ite.width -= 10;
+            }
+
+            protected function btnWide_clickHandler(event:MouseEvent):void
+            {
+                ite.width += 10;
+            }
+
+            protected function textAreaIText_changeHandler(event:TextOperationEvent):void
+            {
+                ite.setIText(XML(textAreaIText.text));
+            }
+        ]]>
+    </fx:Script>
+    <s:VGroup width="70%"
+              maxWidth="760"
+              height="100%"
+              paddingTop="50">
+        <s:Label text="Ver:0819_1" />
+        <s:VGroup height="40%"
+                  width="100%">
+            <components:ITextEditer id="ite"
+                                    contentBackgroundAlpha="0.0"
+                                    contentBackgroundColor="#FDFDFD"
+                                    maxWidth="760"
+                                    width="90%"
+                                    height="100%" />
+        </s:VGroup>
+        <views:ITextEditTools height="30%"
+                              width="100%"
+                              id="itextTool" />
+        <s:VGroup height="30%"
+                  width="100%">
+            <s:Label text="IText数据" />
+            <s:TextArea id="textAreaIText"
+                        text="{itextXMLString}"
+                        change="textAreaIText_changeHandler(event)"
+                        height="100%"
+                        width="100%" />
+        </s:VGroup>
+    </s:VGroup>
+</s:Application>

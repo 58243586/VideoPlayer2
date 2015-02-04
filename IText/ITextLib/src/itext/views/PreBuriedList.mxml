@@ -1,0 +1,83 @@
+<?xml version="1.0" encoding="utf-8"?>
+<mx:List xmlns:fx="http://ns.adobe.com/mxml/2009"
+		 xmlns:s="library://ns.adobe.com/flex/spark"
+		 xmlns:mx="library://ns.adobe.com/flex/mx"
+		 allowMultipleSelection="true"
+		 itemRenderer="itext.views.elements.PreBuriedListItem"
+		 width="400"
+		 height="300">
+	<fx:Declarations>
+		<!-- 将非可视元素（例如服务、值对象）放在此处 -->
+	</fx:Declarations>
+
+	<fx:Script>
+		<![CDATA[
+			import mx.collections.ArrayCollection;
+
+			import itext.vo.EffectVO;
+			import itext.vo.KeywordVO;
+			import itext.vo.QuestionVO;
+
+			private var keywords:Vector.<KeywordVO> = null;
+
+			private var questions:Vector.<KeywordVO> = null;
+
+			private var effects:Vector.<KeywordVO> = null;
+
+
+			public function update(keywords:Vector.<KeywordVO>, questions:Vector.<QuestionVO>, effects:Vector.<EffectVO>):void
+			{
+				var array:ArrayCollection = new ArrayCollection();
+				var i:int = 0;
+				var j:int = 0;
+
+				for (i = 0; i < keywords.length; i++)
+				{
+					array.addItem(keywords[i]);
+				}
+
+				for (i = 0; i < questions.length; i++)
+				{
+					array.addItem(questions[i]);
+
+					for (j = 0; j < questions[i].answers.length; j++)
+					{
+						array.addItem(questions[i].answers[j]);
+					}
+				}
+
+				for (i = 0; i < effects.length; i++)
+				{
+					array.addItem(effects[i]);
+				}
+//				this.dataProvider = null;
+//				this.labelField = "content";
+				this.dataProvider = array;
+			}
+
+			public function setSelect(beginIndex:int, endIndex:int):void
+			{
+				var array:ArrayCollection = this.dataProvider as ArrayCollection;
+
+				if(array == null)
+				{
+					return;
+				}
+					
+				for (var i:int = 0; i < array.length; i++)
+				{
+					if (array[i] is QuestionVO)
+					{
+						continue;
+					}
+
+					if (array[i].beginIndex == beginIndex && array[i].endIndex == endIndex)
+					{
+						this.selectedIndex = i;
+						break;
+					}
+				}
+			}
+		]]>
+	</fx:Script>
+</mx:List>

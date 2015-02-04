@@ -1,0 +1,74 @@
+<?xml version="1.0" encoding="utf-8"?>
+<singletomComponents:SingletonTitleWindow xmlns:fx="http://ns.adobe.com/mxml/2009"
+                                          xmlns:s="library://ns.adobe.com/flex/spark"
+                                          xmlns:mx="library://ns.adobe.com/flex/mx"
+                                          xmlns:SingletonComponents="framework.SingletonComponents.*"
+                                          width="400"
+                                          height="300"
+                                          title="设为答案"
+                                          xmlns:singletomComponents="itext.framework.singletomComponents.*">
+    <fx:Declarations>
+        <!-- 将非可视元素（例如服务、值对象）放在此处 -->
+    </fx:Declarations>
+
+    <fx:Script>
+        <![CDATA[
+            import itext.events.AnswerSetWindowEvent;
+            import itext.vo.QuestionVO;
+
+            import mx.collections.ArrayCollection;
+            import mx.collections.IList;
+
+            private var questionsList:ArrayCollection = new ArrayCollection();
+
+            static private var instance:AnswerSetWindow = new AnswerSetWindow();
+
+            static public function getInstance():AnswerSetWindow
+            {
+                return instance;
+            }
+
+            public function updateQuestionList(questions:Vector.<QuestionVO>):void
+            {
+                var questionVO:QuestionVO = null;
+                questionsList.removeAll();
+
+                for (var i:int = 0; i < questions.length; i++)
+                {
+                    questionsList.addItem(questions[i]);
+                }
+
+                questionList.dataProvider = questionsList;
+                questionList.labelField = "content";
+            }
+
+            protected function btnSubmit_clickHandler(event:MouseEvent):void
+            {
+                trace("选中的问题是：", questionList.selectedItem as QuestionVO);
+                this.dispatchEvent(new AnswerSetWindowEvent(AnswerSetWindowEvent.ANSWER_SET, questionList.selectedItem as QuestionVO));
+                this.close();
+            }
+
+            protected function linkCancel_clickHandler(event:MouseEvent):void
+            {
+                super.close();
+            }
+        ]]>
+    </fx:Script>
+
+    <s:VGroup width="100%"
+              height="100%">
+        <s:Label text="选择对应的问题"/>
+        <s:List id="questionList"
+                width="100%"
+                height="100%"/>
+        <s:HGroup>
+            <s:Button id="btnSubmit"
+                      label="确定"
+                      click="btnSubmit_clickHandler(event)"/>
+            <mx:LinkButton id="linkCancel"
+                           label="取消"
+                           click="linkCancel_clickHandler(event)"/>
+        </s:HGroup>
+    </s:VGroup>
+</singletomComponents:SingletonTitleWindow>

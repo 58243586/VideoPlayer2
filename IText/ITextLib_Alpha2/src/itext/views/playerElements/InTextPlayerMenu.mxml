@@ -1,0 +1,317 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ns1:InTextPlayerMenuUI xmlns:fx="http://ns.adobe.com/mxml/2009"
+                        xmlns:s="library://ns.adobe.com/flex/spark"
+                        xmlns:mx="library://ns.adobe.com/flex/mx"
+                        xmlns:ns1="*"
+                        creationComplete="createionCompleteHandler()">
+    <fx:Declarations>
+        <!-- 将非可视元素（例如服务、值对象）放在此处 -->
+    </fx:Declarations>
+    <fx:Script>
+        <![CDATA[
+			import com.greensock.TweenLite;
+			
+			import itext.components.ITextPlayer;
+			import itext.constants.PencilTypeConstant;
+			
+			import mx.managers.ToolTipManager;
+
+            private const COLOR_0:uint = 0x004168;
+
+            private const COLOR_1:uint = 0x44A9E4;
+
+            private const COLOR_2:uint = 0x54BD00;
+
+            private const COLOR_3:uint = 0xFFA44B;
+
+            private const COLOR_4:uint = 0xE93C00;
+
+            private var _player:ITextPlayer = null;
+
+            private var _colorButtons:Array = null;
+
+            private var _drawPenButtons:Array = null;
+
+
+            //线条的尺寸
+            private var lineSize:int = 1;
+
+            //线条颜色
+            private var lineColor:uint = 0;
+
+            //线条类型
+            private var lineType:String = PencilTypeConstant.CUSTOM;
+
+			private var isInited:Boolean = false;
+			
+            private function createionCompleteHandler():void
+            {
+				if(isInited == true)
+				{
+					return;
+				}
+				
+                this.addEventListener(MouseEvent.ROLL_OVER, rollOverHandler);
+				
+                var i:int = 0;
+
+                for (i = 0; i < penMenu.numChildren; i++)
+                {
+                    if (penMenu.getChildAt(i) is ButtonOverLayerUI)
+                    {
+                        (penMenu.getChildAt(i) as ButtonOverLayerUI).addEventListener(MouseEvent.CLICK, penMenuHandler);
+                        (penMenu.getChildAt(i) as ButtonOverLayerUI).alpha = 0;
+                    }
+                }
+
+                for (i = 0; i < noteMenu.numChildren; i++)
+                {
+                    if (noteMenu.getChildAt(i) is ButtonOverLayerUI)
+                    {
+                        initButtonLayer(noteMenu.getChildAt(i) as ButtonOverLayerUI);
+                        (noteMenu.getChildAt(i) as ButtonOverLayerUI).addEventListener(MouseEvent.CLICK, noteMenuHandler);
+                    }
+                }
+
+                btnPen.addEventListener(MouseEvent.CLICK, btnPen_clickHandler);
+
+                btnNote.addEventListener(MouseEvent.CLICK, btnNote_clickHandler);
+
+                initButtonLayer(btnNote.getChildByName("btnLayer") as ButtonOverLayerUI);
+
+                initInterface();
+				
+				isInited = true;
+            }
+
+            private function initInterface():void
+            {
+                _colorButtons = [penMenu.getChildByName("btnLayerColor0"), penMenu.getChildByName("btnLayerColor1"), penMenu.getChildByName("btnLayerColor2"), penMenu.getChildByName("btnLayerColor3"), penMenu.getChildByName("btnLayerColor4")];
+                _drawPenButtons = [penMenu.getChildByName("btnLayerCustom"), penMenu.getChildByName("btnLayerLineType")];
+
+                initNomalButton(penMenu.getChildByName("btnLayerEraser") as ButtonOverLayerUI);
+                initSwitchButton(penMenu.getChildByName("btnLyaerLineSize") as ButtonOverLayerUI);
+                initSwitchButton(btnPen.getChildByName("btnLayer") as ButtonOverLayerUI);
+                (btnPen.getChildByName("btnLayer") as ButtonOverLayerUI).alpha = 0;
+
+                penMenuControl(penMenu.getChildByName("btnLayerColor0") as ButtonOverLayerUI);
+                penMenuControl(penMenu.getChildByName("btnLayerCustom") as ButtonOverLayerUI);
+
+				penMenu.visible = false;
+				noteMenu.visible = false;
+            }
+
+            public function bindITextPlayer(itextPlayer:ITextPlayer):void
+            {
+                _player = itextPlayer;
+            }
+
+            private function penMenuControl(layer:ButtonOverLayerUI):void
+            {
+                if (layer.name == "btnLayerEraser")
+                {
+                    trace("橡皮擦");
+                    _player.paletteEraser();
+                    return;
+                }
+
+                switch (layer.name)
+                {
+                    case "btnLayerColor0":
+                        lineColor = COLOR_0;
+                        buttonGroupUpdate(_colorButtons, layer);
+                        break;
+                    case "btnLayerColor1":
+                        lineColor = COLOR_1;
+                        buttonGroupUpdate(_colorButtons, layer);
+                        break;
+                    case "btnLayerColor2":
+                        lineColor = COLOR_2;
+                        buttonGroupUpdate(_colorButtons, layer);
+                        break;
+                    case "btnLayerColor3":
+                        lineColor = COLOR_3;
+                        buttonGroupUpdate(_colorButtons, layer);
+                        break;
+                    case "btnLayerColor4":
+                        lineColor = COLOR_4;
+                        buttonGroupUpdate(_colorButtons, layer);
+                        break;
+                    case "btnLyaerLineSize":
+                        lineSize = lineSize == 4 ? 2 : 4;
+                        break;
+                    case "btnLayerLineType":
+                        lineType = PencilTypeConstant.STRAIGHT;
+                        buttonGroupUpdate(_drawPenButtons, layer);
+                        break;
+                    case "btnLayerCustom":
+                        lineType = PencilTypeConstant.CUSTOM;
+                        buttonGroupUpdate(_drawPenButtons, layer);
+                        break;
+                }
+               
+            }
+
+            private function penMenuHandler(e:MouseEvent):void
+            {
+                penMenuControl(e.currentTarget as ButtonOverLayerUI);
+				_player.setPencil(lineColor, lineSize, lineType, penMenu.visible);
+            }
+
+            private function noteMenuHandler(e:MouseEvent):void
+            {
+                switch (e.currentTarget.name)
+                {
+                    case "btnLayerColor0":
+                        _player.setNote(COLOR_0);
+                        break;
+                    case "btnLayerColor1":
+                        _player.setNote(COLOR_1);
+                        break;
+                    case "btnLayerColor2":
+                        _player.setNote(COLOR_2);
+                        break;
+                    case "btnLayerColor3":
+                        _player.setNote(COLOR_3);
+                        break;
+                    case "btnLayerColor4":
+                        _player.setNote(COLOR_4);
+                        break;
+                }
+            }
+
+            private function rollOverHandler(e:MouseEvent):void
+            {
+                this.addEventListener(MouseEvent.ROLL_OUT, rollOutHandler);
+                TweenLite.to(this, 0.3, {alpha: 1});
+            }
+
+            private function rollOutHandler(e:MouseEvent):void
+            {
+                this.removeEventListener(MouseEvent.ROLL_OUT, rollOutHandler);
+                TweenLite.to(this, 0.3, {alpha: 0.3, delay: 1, onComplete: onRollOut});
+            }
+
+            private function onRollOut():void
+            {
+//                penMenu.visible = false;
+                noteMenu.visible = false;
+            }
+
+            private function btnPen_clickHandler(e:MouseEvent):void
+            {
+                penMenu.visible = !penMenu.visible;
+                noteMenu.visible = false;
+                _player.setPencil(lineColor, lineSize, lineType, penMenu.visible);
+            }
+
+            private function btnNote_clickHandler(e:MouseEvent):void
+            {
+                noteMenu.visible = !noteMenu.visible;
+                penMenu.visible = false;
+            }
+
+            private function initButtonLayer(layer:ButtonOverLayerUI):void
+            {
+                layer.buttonMode = true;
+                layer.alpha = 0;
+                layer.addEventListener(MouseEvent.ROLL_OVER, layer_rollOverHandler);
+            }
+
+            private function layer_rollOverHandler(e:MouseEvent):void
+            {
+                var layer:ButtonOverLayerUI = e.currentTarget as ButtonOverLayerUI;
+
+                layer.addEventListener(MouseEvent.ROLL_OUT, layer_rollOutHandler);
+
+                layer.alpha = 1;
+            }
+
+
+            private function layer_rollOutHandler(e:MouseEvent):void
+            {
+                var layer:ButtonOverLayerUI = e.currentTarget as ButtonOverLayerUI;
+                layer.removeEventListener(MouseEvent.ROLL_OUT, layer_rollOutHandler);
+
+                layer.alpha = 0;
+            }
+
+            /**
+             * 数据类型是[ButtonOverLayerUI]
+             *
+             */
+            private function buttonGroupUpdate(layers:Array, layer:ButtonOverLayerUI):void
+            {
+                for (var i:int = 0; i < layers.length; i++)
+                {
+                    if (layers[i] == layer)
+                    {
+                        layers[i].alpha = 1;
+                        continue;
+                    }
+                    else
+                    {
+                        layers[i].alpha = 0;
+                    }
+                }
+            }
+
+
+            //----------------------------------------------------
+            //普通类型按钮的皮肤控制
+            private function initNomalButton(layer:ButtonOverLayerUI):void
+            {
+                layer.alpha = 0;
+
+                layer.addEventListener(MouseEvent.ROLL_OVER, nomalButton_rollOverHandler);
+                layer.addEventListener(MouseEvent.MOUSE_DOWN, nomalButton_mosueDownHandler);
+            }
+
+            private function nomalButton_rollOverHandler(e:MouseEvent):void
+            {
+                var layer:ButtonOverLayerUI = e.currentTarget as ButtonOverLayerUI;
+                layer.alpha = 1;
+
+                layer.addEventListener(MouseEvent.ROLL_OUT, nomalButton_rollOutHandler);
+            }
+
+            private function nomalButton_rollOutHandler(e:MouseEvent):void
+            {
+                var layer:ButtonOverLayerUI = e.currentTarget as ButtonOverLayerUI;
+                layer.alpha = 0;
+
+                layer.removeEventListener(MouseEvent.ROLL_OUT, nomalButton_rollOutHandler);
+            }
+
+            private function nomalButton_mosueDownHandler(e:MouseEvent):void
+            {
+                var layer:ButtonOverLayerUI = e.currentTarget as ButtonOverLayerUI;
+                layer.alpha = 0.5;
+
+                layer.addEventListener(MouseEvent.MOUSE_UP, nomalButton_mosueUpHandler);
+            }
+
+            private function nomalButton_mosueUpHandler(e:MouseEvent):void
+            {
+                var layer:ButtonOverLayerUI = e.currentTarget as ButtonOverLayerUI;
+                layer.alpha = 1;
+
+                layer.removeEventListener(MouseEvent.MOUSE_UP, nomalButton_mosueUpHandler);
+            }
+
+            //----------------------------------------------------------------------
+            //选择性按钮的状态
+
+            private function initSwitchButton(layer:ButtonOverLayerUI):void
+            {
+                layer.addEventListener(MouseEvent.CLICK, switchButton_clickHandler);
+            }
+
+            private function switchButton_clickHandler(e:MouseEvent):void
+            {
+                var layer:ButtonOverLayerUI = e.currentTarget as ButtonOverLayerUI;
+                layer.alpha = layer.alpha == 1 ? 0 : 1;
+            }
+        ]]>
+    </fx:Script>
+</ns1:InTextPlayerMenuUI>

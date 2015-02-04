@@ -1,0 +1,178 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:Group xmlns:fx="http://ns.adobe.com/mxml/2009"
+         xmlns:s="library://ns.adobe.com/flex/spark"
+         xmlns:mx="library://ns.adobe.com/flex/mx"
+         xmlns:editerElements="itext.views.editerElements.*"
+         minHeight="120"
+         width="90%"
+         addedToStage="group1_addedToStageHandler(event)"
+         removedFromStage="group1_removedFromStageHandler(event)"
+         creationComplete="group1_creationCompleteHandler(event)">
+    <s:layout>
+        <s:HorizontalLayout />
+    </s:layout>
+
+    <fx:Script>
+        <![CDATA[
+            import itext.components.ITextEditer;
+            import itext.events.InTextEditerEvent;
+            import itext.framework.IconFactory;
+            import itext.skin.ImgButtonSkin;
+            import itext.vo.AnswerVO;
+
+            import mx.controls.Alert;
+            import mx.events.CloseEvent;
+            import mx.events.FlexEvent;
+            import mx.events.ListEvent;
+
+            //绑定的IText组件
+            private var inTextEditer:ITextEditer = null;
+
+            /*----------------公共方法--------------------*/
+            //
+            //
+            //
+
+            /**
+             * 设置要管理的IText组件
+             *
+             */
+            public function manageInTextEditer(target:ITextEditer):void
+            {
+                if (inTextEditer != null)
+                {
+                    inTextEditer.removeEventListener(InTextEditerEvent.EDITER_CHANGE, inTextEditer_editerChangeHandler);
+                }
+                inTextEditer = target;
+                inTextEditer.addEventListener(InTextEditerEvent.EDITER_CHANGE, inTextEditer_editerChangeHandler);
+                inTextEditer.addEventListener(InTextEditerEvent.QUESTION_INPUT_BOX_CHANGE, inTextEditer_questionInputBoxChangeHandler);
+                preBuriedList.update(inTextEditer.getKeywords(), inTextEditer.getQuestions(), inTextEditer.getEffects(), false, true, false);
+            }
+
+            /*-------------------------------------------*/
+
+            /**
+             * IText的Editer组件反正了编辑改变广播出事件时，更新“设置列表”
+             */
+            private function inTextEditer_editerChangeHandler(e:InTextEditerEvent):void
+            {
+                preBuriedList.update(e.keywords, e.questions, e.effects, false, true, false);
+
+            }
+
+            private function inTextEditer_questionInputBoxChangeHandler(e:InTextEditerEvent):void
+            {
+                preBuriedList.update(e.keywords, e.questions, e.effects, false, true, false);
+                qaTip.changeState(3);
+            }
+
+
+            protected function btnSetQuestion_clickHandler(event:MouseEvent):void
+            {
+                //调用IText设置问题方法
+                inTextEditer.setQuestion();
+                qaTip.changeState(2);
+            }
+
+            /**
+             * 在列表中选择对应的预埋设置，并单击了删除按钮的事件
+             */
+            protected function btnDelPreBuried_clickHandler(event:MouseEvent):void
+            {
+                if (preBuriedList.selectedItems != null)
+                {
+                    Alert.show("确定要删除所选内容吗？", "警告！", Alert.YES | Alert.NO, null, onDelQA);
+                }
+            }
+
+            private function onDelQA(e:CloseEvent):void
+            {
+                if (e.detail == Alert.YES)
+                {
+                    //缓存
+                    var delArray:Array = new Array();
+                    var i:int = 0;
+
+                    for (i = 0; i < preBuriedList.selectedItems.length; i++)
+                    {
+                        delArray.push(preBuriedList.selectedItems[i]);
+                    }
+
+                    for (i = 0; i < delArray.length; i++)
+                    {
+                        inTextEditer.delPreburied(delArray[i]);
+                    }
+                }
+            }
+
+            protected function group1_addedToStageHandler(event:Event):void
+            {
+				
+            }
+
+
+            protected function group1_removedFromStageHandler(event:Event):void
+            {
+
+            }
+
+            protected function group1_creationCompleteHandler(event:FlexEvent):void
+            {
+                (btnDelPreBuried.skin as ImgButtonSkin).leftImg = IconFactory.ICO_DELETE;
+            }
+
+            protected function preBuriedList_changeHandler(event:ListEvent):void
+            {
+                // TODO Auto-generated method stub
+                var vo:Object = preBuriedList.dataProvider[event.rowIndex];
+
+                if (vo is AnswerVO)
+                {
+                    inTextEditer.setSelection(vo["beginIndex"], vo["endIndex"], false);
+                }
+            }
+        ]]>
+    </fx:Script>
+
+    <fx:Declarations>
+        <!-- 将非可视元素（例如服务、值对象）放在此处 -->
+    </fx:Declarations>
+    <s:VGroup paddingTop="15"
+              paddingLeft="10"
+              gap="8">
+        <s:Button id="btnSetQuestion"
+                  label="设置问题"
+                  width="76"
+                  height="28"
+                  color="0x525252"
+                  fontSize="13"
+                  click="btnSetQuestion_clickHandler(event)" />
+        <editerElements:QAPrompting id="qaTip" />
+    </s:VGroup>
+    <s:VGroup paddingLeft="130"
+              paddingTop="8"
+              paddingBottom="8"
+              height="100%"
+              width="100%"
+			  gap="0">
+        <s:HGroup
+                  verticalAlign="middle"
+                  width="100%">
+            <s:Label text="问题列表"
+                     color="0x666666" />
+            <s:HGroup horizontalAlign="right"
+                      width="100%">
+                <s:Button id="btnDelPreBuried"
+                          label="删除"
+                          width="58"
+                          color="0x666666"
+                          skinClass="itext.skin.ImgButtonSkin"
+                          click="btnDelPreBuried_clickHandler(event)" />
+            </s:HGroup>
+        </s:HGroup>
+        <editerElements:PreBuriedList id="preBuriedList"
+                                      height="82"
+                                      width="100%"
+                                      change="preBuriedList_changeHandler(event)" />
+    </s:VGroup>
+</s:Group>

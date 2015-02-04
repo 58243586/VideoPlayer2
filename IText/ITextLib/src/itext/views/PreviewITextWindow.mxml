@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<singletomComponents:SingletonTitleWindow xmlns:fx="http://ns.adobe.com/mxml/2009" xmlns:s="library://ns.adobe.com/flex/spark" xmlns:mx="library://ns.adobe.com/flex/mx"
+                                          xmlns:singletomComponents="itext.framework.singletomComponents.*" xmlns:views="itext.views.*" title="预览">
+    <singletomComponents:layout>
+        <s:VerticalLayout/>
+    </singletomComponents:layout>
+    <fx:Declarations>
+        <!-- 将非可视元素（例如服务、值对象）放在此处 -->
+    </fx:Declarations>
+
+    <fx:Script>
+        <![CDATA[
+            static private var instance:PreviewITextWindow = new PreviewITextWindow();
+
+            static public function getInstance():PreviewITextWindow
+            {
+                return instance
+            }
+
+            public function setIText(itextXML:XML):void
+            {
+                itextPlayer.setIText(itextXML);
+                itextPlayer.validateNow();
+                this.width = itextPlayer.getTextArea().width + (2 * itextPlayer.paddingX);
+                this.height = itextPlayer.getTextArea().height + 50;
+            }
+        ]]>
+    </fx:Script>
+
+    <s:HGroup verticalAlign="middle" horizontalAlign="center">
+        <views:InTextPlayer id="itextPlayer" />
+    </s:HGroup>
+</singletomComponents:SingletonTitleWindow>

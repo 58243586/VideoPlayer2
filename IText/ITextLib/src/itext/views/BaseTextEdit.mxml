@@ -1,0 +1,472 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:Group xmlns:fx="http://ns.adobe.com/mxml/2009"
+         xmlns:s="library://ns.adobe.com/flex/spark"
+         xmlns:mx="library://ns.adobe.com/flex/mx">
+    <s:layout>
+        <s:BasicLayout />
+    </s:layout>
+
+	<fx:Style source="./itext/css/ToggleButtonBar.css" />
+	
+    <fx:Script>
+        <![CDATA[
+            import flash.events.Event;
+            
+            import itext.constants.TextBorderConstant;
+            import itext.events.InTextEditerEvent;
+            import itext.events.TextBorderSetWindowEvent;
+            import itext.framework.singletomComponents.SingletonTitleWindow;
+            import itext.views.elements.TextBorder;
+            
+            import mx.controls.TextArea;
+            import mx.core.IFlexDisplayObject;
+            import mx.core.ScrollControlBase;
+            import mx.core.UIComponent;
+            import mx.core.UITextField;
+            import mx.core.mx_internal;
+            import mx.events.DropdownEvent;
+            import mx.events.FlexEvent;
+            import mx.events.FlexMouseEvent;
+            import mx.events.ListEvent;
+            import mx.managers.PopUpManager;
+            
+            import spark.components.TitleWindow;
+
+            use namespace mx_internal;
+
+
+            private var inTextEditer:InTextEditer = null;
+
+            private var textArea:TextArea = null;
+
+            private var preTextFormat:TextFormat = new TextFormat();
+
+            private var linkTextCommitted:Boolean = false;
+
+            private var borderName:String = null;
+
+            public function manageInTextEditer(target:InTextEditer):void
+            {
+                inTextEditer = target;
+                this.textArea = inTextEditer.getTextArea();
+                addTextAreaEventListener();
+
+                inTextEditer.setStyle("Alpha", 0.5);
+            }
+
+            private var _defaultLinkProtocol:String = "http://";
+
+            [Inspectable(defaultValue="http://")]
+
+            public function get defaultLinkProtocol():String
+            {
+                return _defaultLinkProtocol;
+            }
+
+            public function set defaultLinkProtocol(value:String):void
+            {
+                _defaultLinkProtocol = value;
+
+                if (linkTextInput)
+                    linkTextInput.text = _defaultLinkProtocol;
+            }
+
+            private function setBasicStyles(type:String, value:Object = null):void
+            {
+
+                setFocus();
+
+                if (!textArea)
+                    return;
+
+                var tf:TextFormat;
+                var beginIndex:int = textArea.getTextField().selectionBeginIndex;
+                var endIndex:int = textArea.getTextField().selectionEndIndex;
+                textArea.getTextField().alwaysShowSelection = true; //always highlight the choosen text	
+
+                if (beginIndex == endIndex)
+                    tf = preTextFormat;
+                else
+                    tf = new TextFormat();
+
+                if (type == "font")
+                {
+                    tf[type] = fontFamilyCombo.selectedItem;
+                }
+
+                if (type == "size")
+                {
+                    tf[type] = fontSizeCombo.text;
+                }
+
+                if (type == "color")
+                {
+                    tf[type] = uint(colorPicker.selectedColor);
+                }
+
+                if (type == "leading")
+                {
+                    tf[type] = hsliderLeading.value;
+                }
+
+                if (type == "bold" || type == "italic" || type == "underline")
+                {
+                    tf[type] = value;
+
+                    if (type == "bold")
+                        tf.bold = boldButton.selected;
+                    else if (type == "italic")
+                        tf.italic = italicButton.selected;
+                    else
+                        tf.underline = underlineButton.selected;
+                }
+
+                if (type == "align")
+                {
+                    if (beginIndex == endIndex)
+                        tf = new TextFormat();
+                    //Apply the type of align to the whole paragraph
+                    beginIndex = Math.max(0, textArea.getTextField().getFirstCharInParagraph(beginIndex) - 1);
+                    endIndex = textArea.getTextField().getFirstCharInParagraph(endIndex) + textArea.getTextField().getParagraphLength(endIndex) - 1;
+
+                    tf[type] = value;
+                }
+
+                if (type == "url")
+                {
+                    if (value != defaultLinkProtocol && value != "")
+                    {
+                        tf[type] = value;
+                        tf["target"] = "_blank";
+                    }
+                    else if (tf[type] != "")
+                    {
+                        tf[type] = "";
+                        tf["target"] = "";
+                    }
+                }
+
+                if (beginIndex == endIndex)
+                {
+                    textArea.getTextField().defaultTextFormat = tf;
+                    preTextFormat = tf;
+                }
+                else
+                    textArea.getTextField().setTextFormat(tf, beginIndex, endIndex);
+
+                textArea.invalidateDisplayList();
+                textArea.validateDisplayList();
+
+                callLater(textArea.setFocus);
+
+                inTextEditer.updateMarks();
+            }
+
+            private function doAlign(event:Event):void
+            {
+                var action:String = ToggleButtonBar(event.currentTarget).dataProvider.getItemAt(ToggleButtonBar(event.currentTarget).selectedIndex).action;
+                setBasicStyles('align', action);
+            }
+
+            protected function addTextAreaEventListener():void
+            {
+                inTextEditer.addEventListener(InTextEditerEvent.TEXT_SELECTION, inTextEditer_textSelectionHandler);
+            }
+
+            private function inTextEditer_textSelectionHandler(event:Event):void
+            {
+                getBasicStyles();
+            }
+
+            protected function getBasicStyles():void
+            {
+                if (!textArea)
+                    return;
+                var tf:TextFormat;
+                var beginIndex:int = textArea.getTextField().selectionBeginIndex;
+                var endIndex:int = textArea.getTextField().selectionEndIndex;
+
+                if (beginIndex == endIndex)
+                {
+                    tf = textArea.getTextField().defaultTextFormat;
+                    linkTextInput.editable = false;
+
+                    if (tf.url != "")
+                    {
+                        var carIndex:int = textArea.getTextField().caretIndex;
+
+                        if (carIndex < textArea.getTextField().length)
+                        {
+                            var tfNext:TextFormat = textArea.getTextField().getTextFormat(carIndex, carIndex + 1);
+
+                            if (!tfNext.url || tfNext.url == "")
+                                tf.url = tf.target = "";
+                        }
+                        else
+                            tf.url = tf.target = "";
+                    }
+                }
+
+                else
+                {
+                    tf = textArea.getTextField().getTextFormat(beginIndex, endIndex);
+                    linkTextInput.editable = true;
+                }
+
+                fontFamilyCombo.selectedItem = tf.font ? tf.font : " ";
+                fontSizeCombo.text = tf.size ? String(tf.size) : " ";
+                colorPicker.selectedColor = uint(tf.color);
+
+                boldButton.selected = tf.bold;
+                italicButton.selected = tf.italic;
+                underlineButton.selected = tf.underline;
+
+                if (tf.align == "left")
+                    alignButtons.selectedIndex = 0;
+                else if (tf.align == "center")
+                    alignButtons.selectedIndex = 1;
+                else if (tf.align == "right")
+                    alignButtons.selectedIndex = 2;
+                else
+                    alignButtons.selectedIndex = -1;
+
+                if (!preTextFormat || preTextFormat.url != tf.url)
+                    linkTextInput.text = (tf.url == "" || tf.url == null) ? defaultLinkProtocol : tf.url;
+
+                if (textArea.getTextField().defaultTextFormat != tf)
+                    textArea.getTextField().defaultTextFormat = tf;
+
+                preTextFormat = tf;
+                textArea.getTextField().defaultTextFormat = tf;
+            }
+
+            protected function bgColor_closeHandler(event:DropdownEvent):void
+            {
+                inTextEditer.setBackgroundColor(bgColor.selectedColor);
+            }
+
+            private function bgStyle_clickHandler(e:MouseEvent):void
+            {
+                TextBorderSetWindow.getInstance().show();
+                TextBorderSetWindow.getInstance().update(borderName);
+                TextBorderSetWindow.getInstance().addEventListener(TextBorderSetWindowEvent.BORDER_SET, textBorderSetWindow_borderSetHandler);
+				
+				
+            }
+
+            private function textBorderSetWindow_borderSetHandler(e:TextBorderSetWindowEvent):void
+            {
+                TextBorderSetWindow.getInstance().removeEventListener(TextBorderSetWindowEvent.BORDER_SET, textBorderSetWindow_borderSetHandler);
+                borderName = e.borderName;
+                inTextEditer.setTextBorder(borderName);
+
+				var textBorder:TextBorder = new TextBorder();
+				textBorder.updateBorder(borderName, 100, 100);
+				var borderColor:uint = textBorder.getGraphicColor();
+				bgColor.selectedColor = borderColor;
+				inTextEditer.setBackgroundColor(bgColor.selectedColor);
+            }
+
+
+            protected function linkTextInput_changeHandler(event:Event):void
+            {
+                var tf:TextFormat = new TextFormat();
+
+                if (linkTextInput.text == "http://" || linkTextInput.text.length == 0)
+                {
+                    tf.underline = false;
+                    textArea.getTextField().setTextFormat(tf, textArea.selectionBeginIndex, textArea.selectionEndIndex);
+                }
+                else
+                {
+                    tf.underline = true;
+                    textArea.getTextField().setTextFormat(tf, textArea.selectionBeginIndex, textArea.selectionEndIndex);
+                }
+            }
+        ]]>
+    </fx:Script>
+    <fx:Declarations>
+        <!-- 将非可视元素（例如服务、值对象）放在此处 -->
+        <s:ArrayCollection id="fontFamilyArray">
+            <fx:String>宋体</fx:String>
+            <fx:String>楷体_GB2312</fx:String>
+            <fx:String>隶书</fx:String>
+            <fx:String>黑体</fx:String>
+            <fx:String>幼圆</fx:String>
+            <fx:String>仿宋_GB2312</fx:String>
+            <fx:String>_sans</fx:String>
+            <fx:String>_serif</fx:String>
+            <fx:String>_typewriter</fx:String>
+            <fx:String>Arial</fx:String>
+            <fx:String>Courier</fx:String>
+            <fx:String>Courier New</fx:String>
+            <fx:String>Geneva</fx:String>
+            <fx:String>Georgia</fx:String>
+            <fx:String>Helvetica</fx:String>
+            <fx:String>Times New Roman</fx:String>
+            <fx:String>Times</fx:String>
+            <fx:String>Verdana</fx:String>
+        </s:ArrayCollection>
+
+        <s:ArrayCollection id="fontSizeArray">
+            <fx:String>12</fx:String>
+            <fx:String>14</fx:String>
+            <fx:String>16</fx:String>
+            <fx:String>18</fx:String>
+            <fx:String>20</fx:String>
+            <fx:String>22</fx:String>
+            <fx:String>24</fx:String>
+            <fx:String>26</fx:String>
+            <fx:String>28</fx:String>
+            <fx:String>36</fx:String>
+            <fx:String>48</fx:String>
+            <fx:String>72</fx:String>
+        </s:ArrayCollection>
+
+    </fx:Declarations>
+    <s:HGroup width="762"
+              verticalAlign="middle">
+        <s:VGroup paddingRight="40">
+            <s:HGroup>
+                <mx:Label text="字体："
+                          fontWeight="bold" />
+                <mx:ComboBox x="1"
+                             y="32"
+                             id="fontFamilyCombo"
+                             width="70"
+                             editable="false"
+                             dataProvider="{fontFamilyArray}"
+                             contentBackgroundAlpha="1"
+                             close="setBasicStyles('font');" />
+            </s:HGroup>
+            <s:HGroup>
+                <mx:Label text="字号："
+                          fontWeight="bold" />
+                <mx:ComboBox x="186"
+                             y="32"
+                             id="fontSizeCombo"
+                             width="70"
+                             editable="true"
+                             dataProvider="{fontSizeArray}"
+                             close="setBasicStyles('size');"
+                             contentBackgroundAlpha="1"
+                             enter="setBasicStyles('size');" />
+            </s:HGroup>
+        </s:VGroup>
+        <s:VGroup paddingRight="50">
+            <s:HGroup>
+                <mx:Label text="样式："
+                          fontWeight="bold" />
+                <mx:Button x="352"
+                           y="32"
+                           disabledSkin="@Embed(source='./imgs/text_bold_disable.png')"
+                           upSkin="@Embed(source='./imgs/text_bold_normal.png')"
+                           downSkin="@Embed(source='./imgs/text_bold_down.png')"
+                           overSkin="@Embed(source='./imgs/text_bold_over.png')"
+                           selectedDisabledSkin="@Embed(source='./imgs/text_bold_disable.png')"
+                           selectedUpSkin="@Embed(source='./imgs/text_bold_down.png')"
+                           selectedDownSkin="@Embed(source='./imgs/text_bold_down.png')"
+                           selectedOverSkin="@Embed(source='./imgs/text_bold_over.png')"
+                           id="boldButton"
+                           toggle="true"
+                           click="setBasicStyles('bold');" />
+                <mx:Button x="386"
+                           y="32"
+                           disabledSkin="@Embed(source='./imgs/text_italic_disable.png')"
+                           upSkin="@Embed(source='./imgs/text_italic_normal.png')"
+                           downSkin="@Embed(source='./imgs/text_italic_down.png')"
+                           overSkin="@Embed(source='./imgs/text_italic_over.png')"
+                           selectedDisabledSkin="@Embed(source='./imgs/text_italic_disable.png')"
+                           selectedUpSkin="@Embed(source='./imgs/text_italic_down.png')"
+                           selectedDownSkin="@Embed(source='./imgs/text_italic_down.png')"
+                           selectedOverSkin="@Embed(source='./imgs/text_italic_over.png')"
+                           id="italicButton"
+                           toggle="true"
+                           click="setBasicStyles('italic');" />
+                <mx:Button x="419"
+                           y="32"
+                           disabledSkin="@Embed(source='./imgs/text_underline_disable.png')"
+                           upSkin="@Embed(source='./imgs/text_underline_normal.png')"
+                           downSkin="@Embed(source='./imgs/text_underline_down.png')"
+                           overSkin="@Embed(source='./imgs/text_underline_over.png')"
+                           selectedDisabledSkin="@Embed(source='./imgs/text_underline_disable.png')"
+                           selectedUpSkin="@Embed(source='./imgs/text_underline_down.png')"
+                           selectedDownSkin="@Embed(source='./imgs/text_underline_down.png')"
+                           selectedOverSkin="@Embed(source='./imgs/text_underline_over.png')"
+                           id="underlineButton"
+                           toggle="true"
+                           click="setBasicStyles('underline');" />
+                <mx:ToggleButtonBar id="alignButtons"
+                                    firstButtonStyleName="firstButtonBarButton"
+                                    buttonStyleName="buttonBarButton"
+                                    lastButtonStyleName="lastButtonBarButton"
+                                    itemClick="doAlign(event)">
+                    <mx:dataProvider>
+                        <s:ArrayCollection>
+                            <fx:Object action="left" />
+                            <fx:Object action="center" />
+                            <fx:Object action="right" />
+                        </s:ArrayCollection>
+                    </mx:dataProvider>
+                </mx:ToggleButtonBar>
+            </s:HGroup>
+            <s:HGroup>
+                <mx:Label text="颜色："
+                          fontWeight="bold" />
+                <mx:ColorPicker x="461"
+                                y="32"
+                                id="colorPicker"
+                                close="setBasicStyles('color');" />
+            </s:HGroup>
+        </s:VGroup>
+        <s:VGroup>
+            <s:HGroup>
+                <mx:Label text="文本框样式"
+                          fontWeight="bold" />
+                <mx:Button disabledSkin="@Embed(source='./imgs/frame_disable.png')"
+                           upSkin="@Embed(source='./imgs/frame_normal.png')"
+                           downSkin="@Embed(source='./imgs/frame_down.png')"
+                           overSkin="@Embed(source='./imgs/frame_over.png')"
+                           id="bgStyle"
+                           click="bgStyle_clickHandler(event)" />
+            </s:HGroup>
+            <s:HGroup>
+                <mx:Label text="文本框颜色"
+                          fontWeight="bold" />
+                <mx:ColorPicker x="33"
+                                y="103"
+                                id="bgColor"
+                                color="0xFFFFFF"
+                                selectedColor="0xFFFFFF"
+                                close="bgColor_closeHandler(event)" />
+            </s:HGroup>
+        </s:VGroup>
+
+
+        <s:VGroup visible="false">
+            <s:HGroup>
+                <s:Label text="行距:"
+                         fontWeight="bold" />
+                <s:HSlider id="hsliderLeading"
+                           minimum="0"
+                           maximum="5"
+                           stepSize="1"
+                           value="0"
+                           change="setBasicStyles('leading');" />
+            </s:HGroup>
+            <s:HGroup>
+                <s:Label text="超链接"
+                         fontWeight="bold" />
+                <mx:TextInput id="linkTextInput"
+                              width="140"
+                              editable="false"
+                              change="linkTextInput_changeHandler(event)"
+                              focusOut="if (linkTextCommitted) {linkTextCommitted = false;}
+             else
+             {setBasicStyles('url', linkTextInput.text); linkTextInput.text=defaultLinkProtocol;}"
+                              enter="setBasicStyles('url', linkTextInput.text); linkTextInput.text=defaultLinkProtocol; linkTextCommitted=true;" />
+            </s:HGroup>
+        </s:VGroup>
+
+    </s:HGroup>
+</s:Group>

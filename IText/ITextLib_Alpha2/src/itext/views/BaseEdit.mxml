@@ -1,0 +1,370 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<!--
+
+     组件简介：本文基本的的编辑设置
+     Module Describe: The base edit to the TextArea component such as font,size,color
+
+-->
+<s:Group xmlns:fx="http://ns.adobe.com/mxml/2009"
+         xmlns:s="library://ns.adobe.com/flex/spark"
+         xmlns:mx="library://ns.adobe.com/flex/mx"
+         minHeight="120"
+         creationComplete="group1_creationCompleteHandler(event)">
+    <s:layout>
+        <s:VerticalLayout paddingTop="19"
+                          paddingLeft="8"
+                          gap="7" />
+    </s:layout>
+
+    <fx:Style source="./itext/css/ToggleButtonBar.css" />
+    <fx:Script>
+        <![CDATA[
+			import com.jing.component.colorPicker.events.CustomColorPickerEvent;
+			
+			import itext.framework.IconFactory;
+			import itext.skin.CustomColorButtonSkin;
+			import itext.skin.ImgButtonSkin;
+			import itext.skin.ImgToggleButtonSkin;
+			import itext.skin.TextAlignButtonBarSkin;
+
+
+            protected function group1_creationCompleteHandler(event:FlexEvent):void
+            {
+                (btnBold.skin as ImgToggleButtonSkin).leftImg = IconFactory.TEXT_BOLD;
+                (btnItalic.skin as ImgToggleButtonSkin).leftImg = IconFactory.TEXT_ITALIC;
+                (btnUnderline.skin as ImgToggleButtonSkin).leftImg = IconFactory.TEXT_UNDERLINE;
+                (btnBGStyle.skin as ImgButtonSkin).leftImg = IconFactory.ICO_TASTYLE;
+                (btnBGStyle.skin as ImgButtonSkin).rightImg = IconFactory.ICO_ARROW;
+                (btnBGColor.skin as CustomColorButtonSkin).color = 0x000000;
+
+                customColorPicker.addEventListener(CustomColorPickerEvent.CHANGE_COLOR, customColorPicker_changeColorHandler);
+                fontColorPicker.addEventListener(CustomColorPickerEvent.CHANGE_COLOR, fontColorPicker_changeColorHandler);
+            }
+
+            private function customColorPicker_changeColorHandler(e:CustomColorPickerEvent):void
+            {
+                inTextEditer.setBackgroundColor(customColorPicker.value);
+				(btnBGColor.skin as CustomColorButtonSkin).color = customColorPicker.value;
+            }
+
+            private function fontColorPicker_changeColorHandler(e:CustomColorPickerEvent):void
+            {
+                colorPicker.selectedColor = e.color;
+                updateTextArea("color", fontColorPicker.value);
+            }
+
+            protected function btnBGColor_clickHandler(event:MouseEvent):void
+            {
+                customColorPicker.show(event.currentTarget as DisplayObject);
+            }
+
+
+            protected function colorPicker_mouseDownHandler(event:MouseEvent):void
+            {
+                colorPicker.close();
+            }
+
+            protected function colorPicker_clickHandler(event:MouseEvent):void
+            {
+                fontColorPicker.show(event.currentTarget as DisplayObject);
+            }
+        ]]>
+    </fx:Script>
+
+    <fx:Script>
+        <![CDATA[
+            import itext.components.ITextEditer;
+            import com.jing.component.colorPicker.CustomColorPicker;
+            import itext.views.editerElements.TextBorderSetWindow;
+            import flash.events.Event;
+            import flash.text.engine.FontPosture;
+            import flash.text.engine.FontWeight;
+
+            import flashx.textLayout.formats.TextAlign;
+            import flashx.textLayout.formats.TextDecoration;
+            import flashx.textLayout.formats.TextLayoutFormat;
+
+            import itext.constants.TextBorderConstant;
+            import itext.events.InTextEditerEvent;
+            import itext.events.TextBorderSetWindowEvent;
+            import itext.framework.singletomComponents.SingletonTitleWindow;
+            import itext.views.editerElements.TextBorder;
+
+            import mx.core.IFlexDisplayObject;
+            import mx.core.ScrollControlBase;
+            import mx.core.UIComponent;
+            import mx.core.UITextField;
+            import mx.core.mx_internal;
+            import mx.events.ColorPickerEvent;
+            import mx.events.DropdownEvent;
+            import mx.events.FlexEvent;
+            import mx.events.FlexMouseEvent;
+            import mx.events.ItemClickEvent;
+            import mx.events.ListEvent;
+            import mx.managers.PopUpManager;
+
+            import spark.components.TextArea;
+            import spark.components.TitleWindow;
+            import spark.events.IndexChangeEvent;
+
+            private var inTextEditer:ITextEditer = null;
+
+            private var _textArea:TextArea = null;
+
+            private var preTextFormat:TextFormat = new TextFormat();
+
+            private var linkTextCommitted:Boolean = false;
+
+            private var borderName:String = null;
+
+            private var customColorPicker:CustomColorPicker = new CustomColorPicker();
+
+            private var fontColorPicker:CustomColorPicker = new CustomColorPicker();
+
+            /*-----------公共方法---------------*/
+
+            /**
+             * Set the ITextEditer Component which can be edit by this Module
+             * @param target ITextEditer to be edited
+             */
+            public function manageInTextEditer(target:ITextEditer):void
+            {
+                if (inTextEditer != null)
+                {
+                    _textArea.removeEventListener(FlexEvent.SELECTION_CHANGE, textArea_selectionChangeHandler);
+                }
+                inTextEditer = target;
+                this._textArea = inTextEditer.textArea;
+                _textArea.addEventListener(FlexEvent.SELECTION_CHANGE, textArea_selectionChangeHandler);
+            }
+
+            /**
+             * Set ITextEditer's selection the TextLayoutFormat
+             * @param filed object field
+             * @param value new value
+             */
+            public function updateTextArea(field:String, value:Object):void
+            {
+                var txtLayFmt:TextLayoutFormat = _textArea.getFormatOfRange(null, _textArea.selectionAnchorPosition, _textArea.selectionActivePosition);
+                txtLayFmt[field] = value;
+                _textArea.setFormatOfRange(txtLayFmt, _textArea.selectionAnchorPosition, _textArea.selectionActivePosition);
+                _textArea.setFocus();
+				inTextEditer.updateMarks();
+            }
+
+            /*----------------------------------*/
+
+            //在文本框中框选文字后，检测文本格式，同步到BaseTextEdit的控件
+            private function textArea_selectionChangeHandler(e:FlexEvent):void
+            {
+                var txtLayFmt:TextLayoutFormat = _textArea.getFormatOfRange(null, _textArea.selectionAnchorPosition, _textArea.selectionActivePosition);
+                comboFont.selectedItem = txtLayFmt.fontFamily;
+                comboSize.selectedItem = txtLayFmt.fontSize;
+                btnBold.selected = (txtLayFmt.fontWeight == FontWeight.BOLD);
+                btnItalic.selected = (txtLayFmt.fontStyle == FontPosture.ITALIC);
+                btnUnderline.selected = (txtLayFmt.textDecoration == TextDecoration.UNDERLINE);
+                colorPicker.selectedColor = txtLayFmt.color;
+
+                switch (txtLayFmt.textAlign)
+                {
+                    case TextAlign.CENTER:
+                        barAlign.selectedIndex = 1;
+                        break;
+                    case TextAlign.RIGHT:
+                        barAlign.selectedIndex = 2;
+                        break;
+                    default:
+                        barAlign.selectedIndex = 0;
+                        break;
+                }
+            }
+
+
+            /*-----------------文本基础信息设置-----------------*/
+
+            protected function comboFont_changeHandler(event:ListEvent):void
+            {
+                updateTextArea("fontFamily", comboFont.selectedItem);
+            }
+
+            protected function comboSize_changeHandler(event:ListEvent):void
+            {
+                updateTextArea("fontSize", comboSize.selectedItem);
+            }
+
+            protected function btnBold_clickHandler(event:MouseEvent):void
+            {
+                updateTextArea("fontWeight", btnBold.selected ? FontWeight.BOLD : FontWeight.NORMAL);
+            }
+
+            protected function btnItalic_clickHandler(event:MouseEvent):void
+            {
+                updateTextArea("fontStyle", btnItalic.selected ? FontPosture.ITALIC : FontPosture.NORMAL);
+            }
+
+            protected function btnUnderline_clickHandler(event:MouseEvent):void
+            {
+                updateTextArea("textDecoration", btnUnderline.selected ? TextDecoration.UNDERLINE : TextDecoration.NONE);
+            }
+
+            protected function barAlign_itemClickHandler(event:IndexChangeEvent):void
+            {
+				if (barAlign.selectedItem == undefined)
+					return;
+                trace(barAlign.selectedItem.action.toString());
+                updateTextArea("textAlign", barAlign.selectedItem.action.toString());
+            }
+
+            /*-----------------------------------------------*/
+
+
+            /*---------
+             ----------文本框设置---------------------*/
+
+            protected function btnBGStyle_clickHandler(event:MouseEvent):void
+            {
+                TextBorderSetWindow.getInstance().show();
+                TextBorderSetWindow.getInstance().update(borderName);
+                TextBorderSetWindow.getInstance().addEventListener(TextBorderSetWindowEvent.BORDER_SET, textBorderSetWindow_borderSetHandler);
+            }
+
+            private function textBorderSetWindow_borderSetHandler(e:TextBorderSetWindowEvent):void
+            {
+                TextBorderSetWindow.getInstance().removeEventListener(TextBorderSetWindowEvent.BORDER_SET, textBorderSetWindow_borderSetHandler);
+                borderName = e.borderName;
+                inTextEditer.setTextBorder(borderName);
+
+                var textBorder:TextBorder = new TextBorder();
+                textBorder.updateBorder(borderName, 100, 100);
+                var borderColor:uint = textBorder.getGraphicColor();
+                customColorPicker.value = borderColor;
+                inTextEditer.setBackgroundColor(customColorPicker.value);
+                //                colorPickerBGClolor.selectedColor = borderColor;
+                //                inTextEditer.setBackgroundColor(colorPickerBGClolor.selectedColor);
+            }
+
+            protected function colorPickerBGClolor_changeHandler(event:ColorPickerEvent):void
+            {
+                //                inTextEditer.setBackgroundColor(colorPickerBGClolor.selectedColor);
+            }
+            /*-----------------------------------------------*/
+        ]]>
+    </fx:Script>
+    <fx:Declarations>
+        <!-- 将非可视元素（例如服务、值对象）放在此处 -->
+        <s:ArrayCollection id="fontFamilyArray">
+            <fx:String>宋体</fx:String>
+            <fx:String>楷体_GB2312</fx:String>
+            <fx:String>隶书</fx:String>
+            <fx:String>黑体</fx:String>
+            <fx:String>幼圆</fx:String>
+            <fx:String>仿宋_GB2312</fx:String>
+            <fx:String>_sans</fx:String>
+            <fx:String>_serif</fx:String>
+            <fx:String>_typewriter</fx:String>
+            <fx:String>Arial</fx:String>
+            <fx:String>Courier</fx:String>
+            <fx:String>Courier New</fx:String>
+            <fx:String>Geneva</fx:String>
+            <fx:String>Georgia</fx:String>
+            <fx:String>Helvetica</fx:String>
+            <fx:String>Times New Roman</fx:String>
+            <fx:String>Times</fx:String>
+            <fx:String>Verdana</fx:String>
+        </s:ArrayCollection>
+
+        <s:ArrayCollection id="fontSizeArray">
+            <fx:String>12</fx:String>
+            <fx:String>14</fx:String>
+            <fx:String>16</fx:String>
+            <fx:String>18</fx:String>
+            <fx:String>20</fx:String>
+            <fx:String>22</fx:String>
+            <fx:String>24</fx:String>
+            <fx:String>26</fx:String>
+            <fx:String>28</fx:String>
+            <fx:String>36</fx:String>
+            <fx:String>48</fx:String>
+            <fx:String>72</fx:String>
+        </s:ArrayCollection>
+
+    </fx:Declarations>
+
+    <s:HGroup verticalAlign="middle"
+              width="100%">
+        <s:BitmapImage source="{IconFactory.ICO_A}" />
+        <s:Label text="文  字|"
+                 color="0x656565"
+				 fontSize="12"
+				 paddingRight="10"/>
+        <mx:ComboBox id="comboFont"
+                     width="120"
+                     editable="false"
+                     dataProvider="{fontFamilyArray}"
+                     contentBackgroundAlpha="1"
+                     change="comboFont_changeHandler(event)" />
+        <mx:ComboBox id="comboSize"
+                     editable="false"
+                     width="70"
+                     dataProvider="{fontSizeArray}"
+                     contentBackgroundAlpha="1"
+                     change="comboSize_changeHandler(event)" />
+		<s:Label text=""
+				 paddingRight="2"/>
+        <mx:ColorPicker id="colorPicker"
+                        width="20"
+                        height="20"
+                        mouseDown="colorPicker_mouseDownHandler(event)"
+                        click="colorPicker_clickHandler(event)" />
+        <s:ToggleButton id="btnBold"
+                        skinClass="itext.skin.ImgToggleButtonSkin"
+                        click="btnBold_clickHandler(event)" />
+        <s:ToggleButton id="btnItalic"
+                        skinClass="itext.skin.ImgToggleButtonSkin"
+                        click="btnItalic_clickHandler(event)" />
+        <s:ToggleButton id="btnUnderline"
+                        skinClass="itext.skin.ImgToggleButtonSkin"
+                        click="btnUnderline_clickHandler(event)" />
+        <s:ButtonBar id="barAlign"
+                     change="barAlign_itemClickHandler(event)"
+                     skinClass="itext.skin.TextAlignButtonBarSkin">
+            <s:dataProvider>
+                <s:ArrayCollection>
+                    <fx:Object action="left" />
+                    <fx:Object action="center" />
+                    <fx:Object action="right" />
+                </s:ArrayCollection>
+            </s:dataProvider>
+        </s:ButtonBar>
+    </s:HGroup>
+    <s:HGroup verticalAlign="middle"
+              width="100%">
+        <s:BitmapImage source="{IconFactory.ICO_TEXTA}" />
+        <s:Label text="文本框|"
+                 color="0x656565"
+				 fontSize="12"/>
+        <s:Button id="btnBGStyle"
+                  skinClass="itext.skin.ImgButtonSkin"
+                  label="样式"
+                  click="btnBGStyle_clickHandler(event)" />
+        <s:Button id="btnBGColor"
+                  skinClass="itext.skin.CustomColorButtonSkin"
+                  click="btnBGColor_clickHandler(event)"
+                  label="颜色" />
+        <!--
+             <mx:Button disabledSkin="@Embed(source='./imgs/frame_disable.png')"
+             upSkin="@Embed(source='./imgs/frame_normal.png')"
+             downSkin="@Embed(source='./imgs/frame_down.png')"
+             overSkin="@Embed(source='./imgs/frame_over.png')"
+             id="btnBGStyle"
+             click="btnBGStyle_clickHandler(event)" />
+
+             <mx:ColorPicker id="colorPickerBGClolor"
+             color="0xFFFFFF"
+             selectedColor="0xFFFFFF"
+             change="colorPickerBGClolor_changeHandler(event)" />
+        -->
+
+    </s:HGroup>
+</s:Group>

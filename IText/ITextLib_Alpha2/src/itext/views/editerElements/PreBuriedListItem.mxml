@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="utf-8"?>
+<mx:Canvas xmlns:fx="http://ns.adobe.com/mxml/2009"
+           xmlns:s="library://ns.adobe.com/flex/spark"
+           xmlns:mx="library://ns.adobe.com/flex/mx"
+           width="100%">
+    <fx:Declarations>
+        <!-- 将非可视元素（例如服务、值对象）放在此处 -->
+    </fx:Declarations>
+
+    <fx:Script>
+        <![CDATA[
+            import com.jing.utils.StringUtil;
+
+            import itext.framework.IconFactory;
+            import itext.vo.AnswerVO;
+            import itext.vo.EffectVO;
+            import itext.vo.KeywordVO;
+            import itext.vo.QuestionVO;
+
+            public function getIconClass(data:*):Class
+            {
+                hgroup.paddingLeft = 3;
+                var icon:Class = null;
+
+                if (data is KeywordVO)
+                {
+                    icon = IconFactory.ICO_JT;
+                }
+                else if (data is EffectVO)
+                {
+                    icon = IconFactory.ICO_DT;
+                }
+                else if (data is QuestionVO)
+                {
+                    icon = IconFactory.ICO_WT;
+                }
+                else if (data is AnswerVO)
+                {
+                    icon = IconFactory.ICO_DA;
+                    hgroup.paddingLeft = 18;
+                }
+
+                return icon;
+            }
+
+            public function getString(data:*):String
+            {
+                var content:String = data.content;
+                var delIndex:int = content.indexOf("\n");
+
+                if (delIndex != -1)
+                {
+                    content = content.substr(0, delIndex);
+                }
+                return StringUtil.overLengthDeal(content, 20);
+
+            }
+        ]]>
+    </fx:Script>
+
+    <s:HGroup id="hgroup"
+              verticalAlign="middle"
+              paddingLeft="0">
+        <s:Label id="labelSpace" />
+        <mx:Image id="imageIcon"
+                  source="{getIconClass(data)}"
+                  maintainAspectRatio="true" />
+        <s:Label id="labelContent"
+                 text="{getString(data)}"
+                 verticalAlign="middle" />
+    </s:HGroup>
+</mx:Canvas>

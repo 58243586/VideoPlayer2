@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="utf-8"?>
+<singletomComponents:SingletonTitleWindow xmlns:fx="http://ns.adobe.com/mxml/2009"
+                                          xmlns:s="library://ns.adobe.com/flex/spark"
+                                          xmlns:mx="library://ns.adobe.com/flex/mx"
+                                          xmlns:singletomComponents="itext.framework.singletomComponents.*"
+                                          xmlns:views="itext.views.*"
+                                          title="预览"
+                                          xmlns:components="itext.components.*">
+    <singletomComponents:layout>
+        <s:VerticalLayout />
+    </singletomComponents:layout>
+    <fx:Declarations>
+        <!-- 将非可视元素（例如服务、值对象）放在此处 -->
+    </fx:Declarations>
+
+    <fx:Script>
+        <![CDATA[
+            private var textXML:XML = <ITextNote>
+                    <Doodles content="[[{&quot;size&quot;:1,&quot;color&quot;:16744},{&quot;length&quot;:249.41932563456265,&quot;y&quot;:89,&quot;x&quot;:233},{&quot;length&quot;:249.77790134437433,&quot;y&quot;:90,&quot;x&quot;:233},{&quot;length&quot;:253.16002844051033,&quot;y&quot;:99,&quot;x&quot;:233},{&quot;length&quot;:263.89391808073185,&quot;y&quot;:122,&quot;x&quot;:234},{&quot;length&quot;:270.7027890510181,&quot;y&quot;:152,&quot;x&quot;:224},{&quot;length&quot;:255.9785147234041,&quot;y&quot;:167,&quot;x&quot;:194},{&quot;length&quot;:217.90364843205356,&quot;y&quot;:159,&quot;x&quot;:149},{&quot;length&quot;:186.69761648183942,&quot;y&quot;:130,&quot;x&quot;:134},{&quot;length&quot;:153.6522046701576,&quot;y&quot;:85,&quot;x&quot;:128},{&quot;length&quot;:166.01204775557707,&quot;y&quot;:62,&quot;x&quot;:154},{&quot;length&quot;:214.40149253211834,&quot;y&quot;:52,&quot;x&quot;:208},{&quot;length&quot;:265.11318337645906,&quot;y&quot;:61,&quot;x&quot;:258},{&quot;length&quot;:301.0548122850721,&quot;y&quot;:97,&quot;x&quot;:285},{&quot;length&quot;:321.59135560521526,&quot;y&quot;:139,&quot;x&quot;:290},{&quot;length&quot;:299.4461554269816,&quot;y&quot;:152,&quot;x&quot;:258},{&quot;length&quot;:260.7623439072444,&quot;y&quot;:149,&quot;x&quot;:214},{&quot;length&quot;:225.22211259110415,&quot;y&quot;:127,&quot;x&quot;:186},{&quot;length&quot;:258.8609665438187,&quot;y&quot;:128,&quot;x&quot;:225},{&quot;length&quot;:389.3237727136631,&quot;y&quot;:153,&quot;x&quot;:358},{&quot;length&quot;:559.8758791017881,&quot;y&quot;:210,&quot;x&quot;:519}],[{&quot;size&quot;:1,&quot;color&quot;:16744},{&quot;length&quot;:548.0164231115706,&quot;y&quot;:99,&quot;x&quot;:539},{&quot;length&quot;:548.0164231115706,&quot;y&quot;:99,&quot;x&quot;:539},{&quot;length&quot;:548.1979569462112,&quot;y&quot;:100,&quot;x&quot;:539},{&quot;length&quot;:560.3498906933061,&quot;y&quot;:126,&quot;x&quot;:546},{&quot;length&quot;:575.4624227523461,&quot;y&quot;:166,&quot;x&quot;:551},{&quot;length&quot;:551.3927819621871,&quot;y&quot;:197,&quot;x&quot;:515},{&quot;length&quot;:491.4804167004012,&quot;y&quot;:193,&quot;x&quot;:452},{&quot;length&quot;:434.72865099967817,&quot;y&quot;:158,&quot;x&quot;:405},{&quot;length&quot;:412.13226032427986,&quot;y&quot;:107,&quot;x&quot;:398},{&quot;length&quot;:442.10632205386975,&quot;y&quot;:67,&quot;x&quot;:437},{&quot;length&quot;:518.8178871241815,&quot;y&quot;:54,&quot;x&quot;:516},{&quot;length&quot;:556.9380575970724,&quot;y&quot;:74,&quot;x&quot;:552},{&quot;length&quot;:573.8745507512945,&quot;y&quot;:106,&quot;x&quot;:564},{&quot;length&quot;:576.6151229373021,&quot;y&quot;:129,&quot;x&quot;:562},{&quot;length&quot;:565.1088390743857,&quot;y&quot;:138,&quot;x&quot;:548},{&quot;length&quot;:513.6088005476541,&quot;y&quot;:137,&quot;x&quot;:495},{&quot;length&quot;:458.87797942372436,&quot;y&quot;:112,&quot;x&quot;:445},{&quot;length&quot;:446.3462781294362,&quot;y&quot;:75,&quot;x&quot;:440},{&quot;length&quot;:474.5366160793074,&quot;y&quot;:49,&quot;x&quot;:472},{&quot;length&quot;:487.8114389802683,&quot;y&quot;:42,&quot;x&quot;:486},{&quot;length&quot;:475.2315225234959,&quot;y&quot;:46,&quot;x&quot;:473},{&quot;length&quot;:426.5606639154623,&quot;y&quot;:55,&quot;x&quot;:423},{&quot;length&quot;:349.7484810546002,&quot;y&quot;:82,&quot;x&quot;:340},{&quot;length&quot;:339.94852551526094,&quot;y&quot;:109,&quot;x&quot;:322},{&quot;length&quot;:360.2721193764513,&quot;y&quot;:130,&quot;x&quot;:336},{&quot;length&quot;:390.5188855868561,&quot;y&quot;:144,&quot;x&quot;:363},{&quot;length&quot;:404.63440288734716,&quot;y&quot;:152,&quot;x&quot;:375},{&quot;length&quot;:408.71750635371615,&quot;y&quot;:153,&quot;x&quot;:379},{&quot;length&quot;:402.95905499194333,&quot;y&quot;:150,&quot;x&quot;:374},{&quot;length&quot;:365.0342449688796,&quot;y&quot;:145,&quot;x&quot;:335},{&quot;length&quot;:301.1992695874278,&quot;y&quot;:145,&quot;x&quot;:264},{&quot;length&quot;:245.22642598219304,&quot;y&quot;:150,&quot;x&quot;:194},{&quot;length&quot;:237.7666923688009,&quot;y&quot;:153,&quot;x&quot;:182},{&quot;length&quot;:237.00210969525145,&quot;y&quot;:153,&quot;x&quot;:181},{&quot;length&quot;:235.03191272676142,&quot;y&quot;:158,&quot;x&quot;:174},{&quot;length&quot;:220.6354459283458,&quot;y&quot;:158,&quot;x&quot;:154},{&quot;length&quot;:202.71408436514716,&quot;y&quot;:158,&quot;x&quot;:127},{&quot;length&quot;:182.33211456021672,&quot;y&quot;:158,&quot;x&quot;:91}]]"/>
+                    <Notes>
+                        <Note noteIndex="65" color="16753739" content="你好呀"/>
+                        <Note noteIndex="48" color="5553408" content="很高兴认识你"/>
+                    </Notes>
+                </ITextNote>;
+
+            static private var instance:PreviewITextWindow = new PreviewITextWindow();
+
+            static public function getInstance():PreviewITextWindow
+            {
+                return instance
+            }
+
+            public function setIText(itextXML:XML):void
+            {
+                itextPlayer.setIText(itextXML);
+                itextPlayer.validateNow();
+                this.width = itextPlayer.width;
+                this.height = itextPlayer.height + this.titleDisplay.height;
+                trace("IText播放器高度", itextPlayer.height);
+
+                itextPlayer.setITextNote(textXML);
+            }
+
+            override public function close():void
+            {
+                trace("学习笔记:");
+                trace(itextPlayer.getITextNote());
+                super.close();
+            }
+        ]]>
+    </fx:Script>
+
+    <s:HGroup verticalAlign="middle"
+              horizontalAlign="center">
+        <components:ITextPlayer id="itextPlayer" />
+    </s:HGroup>
+</singletomComponents:SingletonTitleWindow>

@@ -1,0 +1,118 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:Group xmlns:fx="http://ns.adobe.com/mxml/2009"
+         xmlns:s="library://ns.adobe.com/flex/spark"
+         xmlns:mx="library://ns.adobe.com/flex/mx"
+         xmlns:views="itext.views.*">
+    <s:layout>
+        <s:BasicLayout />
+    </s:layout>
+    <fx:Declarations>
+        <!-- 将非可视元素（例如服务、值对象）放在此处 -->
+    </fx:Declarations>
+    <fx:Script>
+        <![CDATA[
+            import itext.events.AnswerSetWindowEvent;
+            import itext.events.InTextEditerEvent;
+
+            import mx.core.FlexGlobals;
+            import mx.managers.PopUpManager;
+            import mx.utils.StringUtil;
+
+            private var inTextEditer:InTextEditer = null;
+
+            public function manageInTextEditer(target:InTextEditer):void
+            {
+                inTextEditer = target;
+                inTextEditer.addEventListener(InTextEditerEvent.EDITER_CHANGE, inTextEditer_editerChangeHandler);
+                preBuriedList.update(inTextEditer.getKeywords(), inTextEditer.getQuestions(), inTextEditer.getEffects());
+            }
+
+            private function inTextEditer_editerChangeHandler(e:InTextEditerEvent):void
+            {
+                preBuriedList.update(e.keywords, e.questions, e.effects);
+            }
+
+
+            protected function btnSetAnswer_clickHandler(e:MouseEvent):void
+            {
+                AnswerSetWindow.getInstance().show();
+                AnswerSetWindow.getInstance().updateQuestionList(inTextEditer.getQuestions());
+                AnswerSetWindow.getInstance().addEventListener(AnswerSetWindowEvent.ANSWER_SET, answerSetWindow_answerSetHandler);
+            }
+
+            private function answerSetWindow_answerSetHandler(e:AnswerSetWindowEvent):void
+            {
+                AnswerSetWindow.getInstance().removeEventListener(AnswerSetWindowEvent.ANSWER_SET, answerSetWindow_answerSetHandler);
+
+                if (e.questionVO != null)
+                {
+                    inTextEditer.setQuestionAnswer(e.questionVO.questionIndex);
+                }
+            }
+
+            private function btnSetQuestion_clickHandler(e:MouseEvent):void
+            {
+                var questionContent:String = StringUtil.trim(textAreaQuestion.text);
+
+                if (questionContent != "")
+                {
+                    inTextEditer.setQuestion(questionContent);
+                }
+            }
+
+            protected function btnDelPreBuried_clickHandler(event:MouseEvent):void
+            {
+                if (preBuriedList.selectedItems != null)
+                {
+                    //缓存
+                    var delArray:Array = new Array();
+                    var i:int = 0;
+
+                    for (i = 0; i < preBuriedList.selectedItems.length; i++)
+                    {
+                        delArray.push(preBuriedList.selectedItems[i]);
+                    }
+
+                    for (i = 0; i < delArray.length; i++)
+                    {
+                        inTextEditer.delPreburied(delArray[i]);
+                    }
+                }
+            }
+        ]]>
+    </fx:Script>
+    <s:HGroup height="100%">
+        <s:VGroup paddingRight="40" gap="0">
+            <mx:Label text="预埋问题"
+                      fontWeight="bold" />
+            <s:TextArea id="textAreaQuestion"
+                        width="250"
+                        height="80" />
+            <s:HGroup horizontalAlign="right">
+                <s:Button id="btnSetQuestion"
+                          label="设置问题"
+                          click="btnSetQuestion_clickHandler(event)" />
+            </s:HGroup>
+        </s:VGroup>
+        <s:VGroup paddingRight="50">
+            <mx:Label text="设为答案"
+                      fontWeight="bold" />
+            <mx:Button disabledSkin="@Embed(source='./imgs/reply_disable.png')"
+                       upSkin="@Embed(source='./imgs/reply_normal.png')"
+                       downSkin="@Embed(source='./imgs/reply_down.png')"
+                       overSkin="@Embed(source='./imgs/reply_over.png')"
+                       id="btnSetAnswer"
+                       click="btnSetAnswer_clickHandler(event)" />
+        </s:VGroup>
+        <s:VGroup gap="0">
+            <mx:Label text="设置列表"
+                      fontWeight="bold" />
+            <views:PreBuriedList id="preBuriedList"
+                                 height="80"
+                                 width="250" />
+            <s:Button id="btnDelPreBuried"
+                      label="删除"
+                      click="btnDelPreBuried_clickHandler(event)" />
+        </s:VGroup>
+    </s:HGroup>
+</s:Group>

@@ -1,0 +1,834 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:Group xmlns:fx="http://ns.adobe.com/mxml/2009"
+         xmlns:s="library://ns.adobe.com/flex/spark"
+         xmlns:mx="library://ns.adobe.com/flex/mx"
+         width="400"
+         height="300"
+         creationComplete="creationCompleteHandler(event)"
+         implements="itext.interfaces.ITextPlayer"
+         xmlns:components="itext.components.*"
+         xmlns:views="itext.views.*"
+         xmlns:ns1="*">
+    <s:layout>
+        <s:BasicLayout />
+    </s:layout>
+    <fx:Declarations>
+        <!-- 将非可视元素（例如服务、值对象）放在此处 -->
+    </fx:Declarations>
+    <fx:Script>
+        <![CDATA[
+            import itext.components.NoteSignCursor;
+            import itext.components.Palette;
+            import itext.constants.EffectTypeConstant;
+            import itext.constants.TriggerConstant;
+            import itext.events.EffectTriggerEvent;
+            import itext.events.KeywordTriggerEvent;
+            import itext.events.NoteSignEvent;
+            import itext.framework.EffectFactory;
+            import itext.framework.KeywordBorderFactory;
+            import itext.interfaces.ITextPlayer;
+            import itext.views.elements.AnswerTip;
+            import itext.views.elements.EffectPreburied;
+            import itext.views.elements.KeywordPreburied;
+            import itext.views.elements.NoteSign;
+            import itext.views.elements.QuestionBorder;
+            import itext.views.elements.QuestionPreburied;
+            import itext.views.elements.TextBorder;
+            import itext.views.elements.effects.HaloEffect;
+            import itext.vo.AnswerVO;
+            import itext.vo.EffectVO;
+            import itext.vo.KeywordVO;
+            import itext.vo.NoteVO;
+            import itext.vo.QuestionVO;
+            
+            import mx.binding.utils.ChangeWatcher;
+            import mx.core.Container;
+            import mx.core.UIComponent;
+            import mx.events.CloseEvent;
+            import mx.events.FlexEvent;
+            import mx.managers.CursorManager;
+            
+            import spark.components.Label;
+
+
+            private const INSERT_NOTE:String = "InsertNote";
+
+            private const DRAW_LINE:String = "DrawLine";
+
+            //--------------数据对象定义--------------------
+            //
+            //
+            //文本框
+            [Bindable]
+            private var _paddingX:int = 10;
+
+            public function get paddingX():int
+            {
+                return _paddingX;
+            }
+
+            //数据
+            private var itextXML:XML = null;
+
+            private var isUpdateXML:Boolean = false;
+
+            //当前操作状态
+            private var playerState:String = "";
+
+            /*
+             *ITEXT数据部分
+             */
+
+            //关键词句
+            private var keywords:Vector.<KeywordVO> = new Vector.<KeywordVO>();
+
+            //预埋的特效
+            private var effects:Vector.<EffectVO> = new Vector.<EffectVO>();
+
+            //设置的问题
+            private var questions:Vector.<QuestionVO> = new Vector.<QuestionVO>();
+
+            /*
+             *ITEXT学习笔记
+             */
+
+            //注释
+            private var notes:Vector.<NoteVO> = new Vector.<NoteVO>();
+
+
+
+            //---------------显示对象定义----------------------
+            //
+            //
+
+            //菜单
+            private var menu:InTextPlayerMenu = new InTextPlayerMenu();
+
+            //注释图标
+            private var noteSignCursor:NoteSignCursor = new NoteSignCursor();
+
+            /*
+             *ITEXT数据部分
+             */
+
+            //关键词句预埋
+            private var keywordPreburieds:Vector.<KeywordPreburied> = new Vector.<KeywordPreburied>();
+
+            //问题预埋
+            private var questionPreburieds:Vector.<QuestionPreburied> = new Vector.<QuestionPreburied>();
+
+            //特效预埋
+            private var effectPreburieds:Vector.<EffectPreburied> = new Vector.<EffectPreburied>();
+
+            //边框数据缓存
+            private var borders:Vector.<UIComponent> = new Vector.<UIComponent>();
+
+            //背景框
+            private var textBorder:TextBorder = new TextBorder();
+
+            /*
+             *ITEXT学习笔记
+             */
+
+            //注释标记
+            private var noteSigns:Vector.<NoteSign> = new Vector.<NoteSign>();
+
+            //画板
+            private var palette:Palette = null;
+
+            public function getTextArea():TextArea
+            {
+                return ta;
+            }
+
+            public function creationCompleteHandler(e:Event):void
+            {
+//                ta.setStyle("borderAlpha", 0);
+//                ta.setStyle("contentBackgroundAlpha", 0);
+                ta.addEventListener(MouseEvent.MOUSE_UP, mouseUpHandler);
+
+                if (isUpdateXML == false && itextXML != null)
+                {
+                    setIText(itextXML);
+                }
+            }
+
+            private function mouseUpHandler(e:MouseEvent):void
+            {
+                trace("标记位置：", ta.selectionBeginIndex);
+
+                if (playerState == INSERT_NOTE)
+                {
+                    this.removeEventListener(Event.ENTER_FRAME, enterFrameHandler);
+                    this.removeEventListener(MouseEvent.ROLL_OUT, rollOutHandler);
+                    changePlayerState("");
+                    this.removeElement(noteSignCursor);
+                    Mouse.show();
+
+                    insertNote();
+                }
+                else
+                {
+                    checkSelectedAnswer();
+                }
+            }
+
+            public function setIText(xml:XML):void
+            {
+                itextXML = xml;
+
+                if (this.owner == null)
+                {
+                    return;
+                }
+
+                isUpdateXML = true;
+
+                clear();
+
+                ta.htmlText = itextXML.Content;
+                ta.getTextField().htmlText = ta.htmlText;
+                //强制调用，立即更新文本域				
+                updateByXML(itextXML);
+                ta.validateNow();
+
+                createKeywordPreBurieds();
+                createQuestionPreBurieds();
+                createEffectPreBurieds();
+
+                menu.x = ta.width - menu.width;
+                menu.y = 0;
+                menu.bindITextPlayer(this);
+                this.addElement(menu);
+            }
+
+            private function clear():void
+            {
+                ta.htmlText = "";
+                clearBorders();
+                clearEffectPreBurieds();
+                clearKeywordPreBurieds();
+                clearQuestionPreBurieds();
+            }
+
+            private function clearBorders():void
+            {
+                for (var i:int = 0; i < borders.length; i++)
+                {
+                    this.removeElement(borders[i]);
+                }
+                borders.length = 0;
+            }
+
+            //------------------------接口方法----------------------------------------
+
+            public function getITextNote():void
+            {
+
+            }
+
+            public function getStudyOut():void
+            {
+
+            }
+
+
+            /**
+             * 橡皮擦
+             *
+             */
+            public function paletteEraser():void
+            {
+                if (palette != null)
+                {
+                    palette.eraser();
+                }
+            }
+
+            /**
+             * 设置涂鸦
+             *
+             */
+            public function setPencil(color:uint, size:uint, type:String, isActivation:Boolean):void
+            {
+                if (playerState == INSERT_NOTE)
+                {
+                    this.removeElement(noteSignCursor);
+                    this.removeEventListener(MouseEvent.ROLL_OUT, rollOutHandler);
+                    this.removeEventListener(Event.ENTER_FRAME, enterFrameHandler);
+                }
+
+//                playerState = DRAW_LINE;
+                changePlayerState(DRAW_LINE);
+
+                if (palette == null)
+                {
+                    palette = new Palette(ta.width, ta.height);
+                    this.addElement(palette);
+                    this.swapElements(palette, menu);
+                    palette.lineColor = color;
+                }
+                else
+                {
+                    palette.lineColor = color;
+                    palette.resize(ta.width, ta.height);
+                }
+
+                palette.lineType = type;
+                palette.lineSize = size;
+                palette.activation = isActivation;
+
+            }
+
+            /**
+             * 取消涂鸦
+             *
+             */
+            public function cancelPencil():void
+            {
+                palette.activation = false;
+            }
+
+            /**
+             * 设置注释
+             *
+             */
+            public function setNote(color:uint):void
+            {
+                if (playerState == DRAW_LINE)
+                {
+                    cancelPencil();
+                }
+
+                if (playerState != INSERT_NOTE)
+                {
+                    changePlayerState(INSERT_NOTE);
+//					noteSignCursor.color = color;
+                    this.addElement(noteSignCursor);
+                    Mouse.hide();
+                    this.addEventListener(MouseEvent.ROLL_OUT, rollOutHandler);
+                    this.addEventListener(Event.ENTER_FRAME, enterFrameHandler);
+                }
+                noteSignCursor.color = color;
+            }
+
+            public function cancelNote():void
+            {
+                changePlayerState("");
+            }
+
+            /**
+             * 插入注释标记
+             *
+             */
+            public function insertNote():void
+            {
+                var note:NoteVO = null;
+
+                for (var i:int = 0; i < noteSigns.length; i++)
+                {
+                    if (noteSigns[i].vo.noteIndex == ta.selectionBeginIndex)
+                    {
+                        note = noteSigns[i].vo;
+                        noteSigns[i].openNoteBorder();
+                        noteSigns[i].color = noteSignCursor.color;
+                        break;
+                    }
+                }
+
+                if (note == null)
+                {
+                    note = new NoteVO();
+                    note.color = noteSignCursor.color;
+                    note.noteIndex = ta.selectionBeginIndex;
+                    notes.push(note);
+                    createNoteSign(note);
+                    updateNoteSign(note);
+                }
+            }
+
+            private function enterFrameHandler(e:Event):void
+            {
+                noteSignCursor.x = mouseX;
+                noteSignCursor.y = mouseY;
+            }
+
+            private function rollOutHandler(e:MouseEvent):void
+            {
+                this.removeEventListener(Event.ENTER_FRAME, enterFrameHandler);
+                this.addEventListener(MouseEvent.ROLL_OVER, rollOverHandler);
+
+                this.removeElement(noteSignCursor);
+                Mouse.show();
+            }
+
+            private function rollOverHandler(e:MouseEvent):void
+            {
+                if (playerState == INSERT_NOTE)
+                {
+                    this.addElement(noteSignCursor);
+                    Mouse.hide();
+                    this.addEventListener(Event.ENTER_FRAME, enterFrameHandler);
+                }
+            }
+
+            //-------------------------插入注释部分----------------------------------
+
+            private function delNote(note:NoteVO):void
+            {
+                var index:int = notes.indexOf(note);
+
+                if (index != -1)
+                {
+                    removeNoteSign(note);
+                    notes.splice(index, 1);
+                }
+            }
+
+            private function createNoteSign(note:NoteVO):void
+            {
+                var noteSign:NoteSign = new NoteSign(note);
+                noteSign.addEventListener(NoteSignEvent.DEL_NOTE, noteSign_delNoteHandler);
+                noteSigns.push(noteSign);
+                this.addElement(noteSign);
+            }
+
+            private function removeNoteSign(note:NoteVO):void
+            {
+                for (var i:int = 0; i < noteSigns.length; i++)
+                {
+                    if (note == noteSigns[i].vo)
+                    {
+                        noteSigns[i].removeEventListener(NoteSignEvent.DEL_NOTE, noteSign_delNoteHandler);
+                        this.removeElement(noteSigns[i]);
+                        noteSigns.splice(i, 1);
+                        break;
+                    }
+                }
+            }
+
+            private function updateNoteSign(note:NoteVO):void
+            {
+                for (var i:int = 0; i < noteSigns.length; i++)
+                {
+                    if (note == noteSigns[i].vo)
+                    {
+                        noteSigns[i].update(ta);
+                        break;
+                    }
+                }
+            }
+
+            private function noteSign_delNoteHandler(e:NoteSignEvent):void
+            {
+                delNote(e.noteVO);
+            }
+
+            //------------------------关键词句预埋部分-------------------------------
+            /**
+             * 创建关键词句预埋
+             *
+             */
+            private function createKeywordPreBurieds():void
+            {
+                clearKeywordPreBurieds();
+
+                for (var i:int = 0; i < keywords.length; i++)
+                {
+                    var keywordPreburied:KeywordPreburied = new KeywordPreburied(keywords[i]);
+                    keywordPreburied.update(keywords[i].beginIndex, keywords[i].endIndex, ta);
+                    keywordPreburied.addEventListener(KeywordTriggerEvent.KEYWORD_TRIGGER, keywordPreburied_keywordTriggerHandler);
+                    this.addElement(keywordPreburied);
+                    keywordPreburieds.push(keywordPreburied);
+                }
+            }
+
+
+            private function clearKeywordPreBurieds():void
+            {
+                for (var i:int = 0; i < keywordPreburieds.length; i++)
+                {
+                    keywordPreburieds[i].removeEventListener(KeywordTriggerEvent.KEYWORD_TRIGGER, keywordPreburied_keywordTriggerHandler);
+                    this.removeElement(keywordPreburieds[i]);
+                }
+                keywordPreburieds.length = 0;
+            }
+
+            //关键词句预埋触发
+            private function keywordPreburied_keywordTriggerHandler(e:KeywordTriggerEvent):void
+            {
+                var keywordPreburied:KeywordPreburied = e.currentTarget as KeywordPreburied;
+
+                var tf:TextFormat = new TextFormat();
+                tf.color = keywordPreburied.vo.fontColor;
+                ta.getTextField().setTextFormat(tf, keywordPreburied.vo.beginIndex, keywordPreburied.vo.endIndex);
+
+                var border:UIComponent = KeywordBorderFactory.getKeywordBorder(keywordPreburied.vo.border, keywordPreburied.vo.borderColor, keywordPreburied.vo.beginIndex, keywordPreburied.vo.endIndex, ta);
+
+                if (border != null)
+                {
+                    this.addElement(border);
+                    borders.push(border);
+                }
+
+
+                keywordPreburied.removeEventListener(KeywordTriggerEvent.KEYWORD_TRIGGER, keywordPreburied_keywordTriggerHandler);
+                this.removeElement(keywordPreburied);
+
+                for (var i:int = 0; i < keywordPreburieds.length; i++)
+                {
+                    if (keywordPreburieds[i] == keywordPreburied)
+                    {
+                        keywordPreburieds.splice(i, 1);
+                        break;
+                    }
+                }
+            }
+
+
+            //-----------------------------问题设置部分-------------------------------------
+
+            private var questionBorder:QuestionBorder = new QuestionBorder();
+
+            private function createQuestionPreBurieds():void
+            {
+                clearQuestionPreBurieds();
+
+                for (var i:int = 0; i < questions.length; i++)
+                {
+                    var questionPreburied:QuestionPreburied = new QuestionPreburied(questions[i]);
+                    var rect:Rectangle = ta.getTextField().getCharBoundaries(questions[i].questionIndex);
+                    questionPreburied.x = rect.x + ta.x;
+                    questionPreburied.y = rect.y + ta.y;
+                    this.addElement(questionPreburied);
+                    questionPreburieds.push(questionPreburied);
+
+                    questionPreburied.addEventListener(MouseEvent.CLICK, questionPreburied_clickHandler);
+                    questionPreburied.addEventListener(MouseEvent.ROLL_OVER, questionPreburied_rollOverHandler);
+                }
+            }
+
+            private function clearQuestionPreBurieds():void
+            {
+                for (var i:int = 0; i < questionPreburieds.length; i++)
+                {
+                    this.removeElement(questionPreburieds[i]);
+                }
+                questionPreburieds.length = 0;
+            }
+
+            private function questionPreburied_clickHandler(e:MouseEvent):void
+            {
+                var questionPreburied:QuestionPreburied = e.currentTarget as QuestionPreburied;
+                questionPreburied.changeState(QuestionPreburied.ACTIVATION);
+                questionPreburied.removeEventListener(MouseEvent.CLICK, questionPreburied_clickHandler);
+                questionPreburied.vo.isActivation = true;
+                showQuestionPreburied(questionPreburied);
+            }
+
+            private function questionPreburied_rollOverHandler(e:MouseEvent):void
+            {
+                var questionPreburied:QuestionPreburied = e.currentTarget as QuestionPreburied;
+
+                showQuestionPreburied(questionPreburied);
+            }
+
+            private function showQuestionPreburied(questionPreburied:QuestionPreburied):void
+            {
+                if (questionPreburied.vo.isActivation == true)
+                {
+                    questionBorder.content = questionPreburied.vo.content;
+                    this.addElement(questionBorder);
+
+                    questionBorder.x = questionPreburied.x + 15;
+                    questionBorder.y = questionPreburied.y - 5;
+
+                    questionPreburied.addEventListener(MouseEvent.ROLL_OUT, questionPreburied_rollOutHandler);
+                }
+            }
+
+            /**
+             * 通过VO找到承载其的问题预埋显示对象
+             * find quesiton preburied view complent by question valueobject
+             */
+            private function findQuestionPreburied(question:QuestionVO):QuestionPreburied
+            {
+                var questionPreburied:QuestionPreburied = null;
+
+                for (var i:int = 0; i < questionPreburieds.length; i++)
+                {
+                    if (questionPreburieds[i].vo == question)
+                    {
+                        questionPreburied = questionPreburieds[i];
+                        break;
+                    }
+                }
+                return questionPreburied;
+            }
+
+            private function questionPreburied_rollOutHandler(e:MouseEvent):void
+            {
+                var questionPreburied:QuestionPreburied = e.currentTarget as QuestionPreburied;
+                questionPreburied.removeEventListener(MouseEvent.ROLL_OUT, questionPreburied_rollOutHandler);
+
+                this.removeElement(questionBorder);
+            }
+
+            //检查答案的选择
+            private function checkSelectedAnswer():void
+            {
+                var beginIndex:int = ta.selectionBeginIndex;
+                var endIndex:int = ta.selectionEndIndex;
+
+                if (beginIndex != endIndex)
+                {
+                    trace("开始检查答案!");
+
+                    for (var i:int = 0; i < questions.length; i++)
+                    {
+                        if (questions[i].isActivation == false)
+                        {
+                            continue;
+                        }
+
+                        for (var j:int = 0; j < questions[i].answers.length; j++)
+                        {
+                            if (questions[i].answers[j].isAnswered == false && questions[i].answers[j].beginIndex == beginIndex && questions[i].answers[j].endIndex == endIndex)
+                            {
+                                questions[i].answers[j].isAnswered = true;
+
+								var isLast:Boolean = checkIsComplentQuestion(questions[i].answers);
+								
+								createAnswerFindEffect(questions[i].answers[j], isLast);
+								if(isLast == true)
+								{
+									trace("当前问题的所有答案都找到了！");
+									findQuestionPreburied(questions[i]).changeState(QuestionPreburied.TERMINATION);
+								}
+								else
+								{									
+									trace("找到一个答案!");
+								}
+                            }
+                        }
+
+                    }
+                }
+            }
+			
+			private function checkIsComplentQuestion(answers:Vector.<AnswerVO>):Boolean
+			{
+				var isLast:Boolean = true;
+				
+				for (var i:int = 0; i < answers.length; i++)
+				{
+					if (answers[i].isAnswered == false)
+					{
+						isLast = false;
+						break;
+					}
+				}
+				
+				return isLast;
+			}
+
+            private function createAnswerFindEffect(answer:AnswerVO, isLast:Boolean):void
+            {
+                var answerTip:AnswerTip = new AnswerTip(isLast);
+                this.addElement(answerTip);
+
+                var rectStart:Rectangle = ta.getTextField().getCharBoundaries(answer.beginIndex);
+                var rectEnd:Rectangle = ta.getTextField().getCharBoundaries(answer.endIndex - 1);
+
+                answerTip.x = rectStart.x;
+                answerTip.y = rectStart.y - answerTip.height;
+
+                answerTip.show();
+            }
+
+
+            //----------------------------特效设置部分------------------------------------
+
+
+
+            //创建效果预埋
+            private function createEffectPreBurieds():void
+            {
+                clearEffectPreBurieds();
+
+                for (var i:int = 0; i < effects.length; i++)
+                {
+                    var effectPreburied:EffectPreburied = new EffectPreburied(effects[i]);
+                    effectPreburied.update(effects[i].beginIndex, effects[i].endIndex, ta);
+                    effectPreburied.addEventListener(EffectTriggerEvent.EFFECT_TRIGGER, effectPreburied_effectTriggerHandler);
+                    this.addElement(effectPreburied);
+                    effectPreburieds.push(effectPreburied);
+                }
+            }
+
+            //清除
+            private function clearEffectPreBurieds():void
+            {
+                for (var i:int = 0; i < effectPreburieds.length; i++)
+                {
+                    effectPreburieds[i].removeEventListener(EffectTriggerEvent.EFFECT_TRIGGER, effectPreburied_effectTriggerHandler);
+                    this.removeElement(effectPreburieds[i]);
+                }
+
+                effectPreburieds.length = 0;
+            }
+
+            private function effectPreburied_effectTriggerHandler(e:EffectTriggerEvent):void
+            {
+                var effectPreburied:EffectPreburied = e.currentTarget as EffectPreburied;
+
+                //在这里写效果代码
+                var effect:UIComponent = EffectFactory.getEffect(e.effectVO, ta);
+                this.addElement(effect);
+            }
+
+            //-----------------------------系统----------------------------------------
+
+            //根据XML来更新预埋设置
+            private function updateByXML(xml:XML):void
+            {
+                keywords.length = 0;
+                effects.length = 0;
+                questions.length = 0;
+
+                ta.width = Number(xml.Content.@width);
+                ta.height = Number(xml.Content.@height);
+
+                var backgroundColor:int = int(xml.Content.@backgroundColor);
+                var borderName:String = xml.Content.@border;
+
+                if (borderName != "")
+                {
+                    ta.setStyle("borderAlpha", 0);
+                    ta.setStyle("contentBackgroundAlpha", 0);
+                    textBorder.updateBorder(borderName, ta.width + _paddingX, ta.height);
+                    textBorder.changeColor(backgroundColor);
+                    this.addElementAt(textBorder, 0);
+                }
+
+                var keywordVO:KeywordVO = null;
+
+                for each (var keywordNode:XML in xml.Keywords.Keyword)
+                {
+                    keywordVO = new KeywordVO();
+                    keywordVO.beginIndex = keywordNode.@beginIndex;
+                    keywordVO.endIndex = keywordNode.@endIndex;
+                    keywordVO.trigger = keywordNode.@trigger;
+                    keywordVO.fontColor = keywordNode.@fontColor;
+                    keywordVO.border = keywordNode.@border;
+                    keywordVO.borderColor = keywordNode.@borderColor;
+                    keywordVO.param = keywordNode.@param;
+                    keywords.push(keywordVO);
+                }
+
+                var effectVO:EffectVO = null;
+
+                for each (var effectNode:XML in xml.Effects.Effect)
+                {
+                    effectVO = new EffectVO();
+                    effectVO.beginIndex = int(effectNode.@beginIndex);
+                    effectVO.endIndex = int(effectNode.@endIndex);
+                    effectVO.trigger = effectNode.@trigger;
+                    effectVO.effectType = effectNode.@effectType;
+//                    effectVO.effectAction = effectNode.@effectAction;
+                    effectVO.param = effectNode.@param;
+                    effects.push(effectVO);
+                }
+
+                var questionVO:QuestionVO = null;
+
+                for each (var questionNode:XML in xml.Questions.Question)
+                {
+                    questionVO = new QuestionVO();
+                    questionVO.questionIndex = int(questionNode.@questionIndex);
+                    questionVO.content = questionNode.Content.toString();
+
+                    for each (var answerNode:XML in questionNode.Answers.Answer)
+                    {
+                        var answerVO:AnswerVO = new AnswerVO();
+                        answerVO.beginIndex = int(answerNode.@beginIndex);
+                        answerVO.endIndex = int(answerNode.@endIndex);
+                        answerVO.questionIndex = questionVO.questionIndex;
+                        answerVO.content = answerNode.toString();
+                        questionVO.answers.push(answerVO);
+                    }
+                    questions.push(questionVO);
+                }
+            }
+
+
+            private function changePlayerState(state:String):void
+            {
+                playerState = state;
+
+                switch (playerState)
+                {
+                    case "":
+                        showPreburieds();
+                        break;
+                    case INSERT_NOTE:
+                        hidePreburieds();
+                        break;
+                    case DRAW_LINE:
+                        hidePreburieds();
+                        break;
+                }
+            }
+
+            private function hidePreburieds():void
+            {
+                var i:int = 0;
+
+                for (i = 0; i < keywordPreburieds.length; i++)
+                {
+                    keywordPreburieds[i].mouseEnabled = false;
+                }
+
+                for (i = 0; i < effectPreburieds.length; i++)
+                {
+                    effectPreburieds[i].mouseEnabled = false;
+                }
+
+                for (i = 0; i < questionPreburieds.length; i++)
+                {
+                    questionPreburieds[i].mouseEnabled = false;
+                }
+            }
+
+            private function showPreburieds():void
+            {
+                var i:int = 0;
+
+                for (i = 0; i < keywordPreburieds.length; i++)
+                {
+                    keywordPreburieds[i].mouseEnabled = true;
+                }
+
+                for (i = 0; i < effectPreburieds.length; i++)
+                {
+                    effectPreburieds[i].mouseEnabled = true;
+                }
+
+                for (i = 0; i < questionPreburieds.length; i++)
+                {
+                    questionPreburieds[i].mouseEnabled = true;
+                }
+            }
+        ]]>
+    </fx:Script>
+    <components:TextArea x="{_paddingX}"
+                         y="10"
+                         id="ta"
+                         focusAlpha="0"
+                         width="100%"
+                         height="100%"
+                         contentBackgroundAlpha="0"
+                         borderAlpha="0"
+                         editable="false">
+    </components:TextArea>
+</s:Group>

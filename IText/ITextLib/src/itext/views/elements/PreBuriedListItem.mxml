@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="utf-8"?>
+<mx:Canvas xmlns:fx="http://ns.adobe.com/mxml/2009"
+		   xmlns:s="library://ns.adobe.com/flex/spark"
+		   xmlns:mx="library://ns.adobe.com/flex/mx"
+		   width="100%">
+	<fx:Declarations>
+		<!-- 将非可视元素（例如服务、值对象）放在此处 -->
+	</fx:Declarations>
+
+	<fx:Script>
+		<![CDATA[
+			import com.jing.utils.StringUtil;
+			
+			import itext.framework.IconFactory;
+			
+			import itext.vo.AnswerVO;
+			import itext.vo.EffectVO;
+			import itext.vo.KeywordVO;
+			import itext.vo.QuestionVO;
+
+			public function getIconClass(data:*):Class
+			{
+				var icon:Class = null;
+
+				if (data is KeywordVO)
+				{
+					icon = IconFactory.KEYWORD_ICON_CLASS;
+				}
+				else if (data is EffectVO)
+				{
+					icon = IconFactory.EFFECT_ICON_CLASS;
+				}
+				else if (data is QuestionVO)
+				{
+					icon = IconFactory.QUESTION_ICON_CLASS;
+				}
+				else if(data is AnswerVO)
+				{
+					icon = IconFactory.ANSWER_ICON_CLASS;
+				}
+				
+				return icon;
+			}
+		]]>
+	</fx:Script>
+
+	<s:HGroup verticalAlign="middle"
+			  paddingTop="3"
+			  paddingBottom="3"
+			  paddingLeft="3"
+			  paddingRight="3">
+		<mx:Image id="imageIcon" source="{getIconClass(data)}" maintainAspectRatio="true" />
+		<s:Label id="labelContent" text="{StringUtil.overLengthDeal(data.content,20)}" verticalAlign="middle" />
+	</s:HGroup>
+</mx:Canvas>

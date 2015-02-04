@@ -1,0 +1,507 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:Group xmlns:fx="http://ns.adobe.com/mxml/2009"
+         xmlns:s="library://ns.adobe.com/flex/spark"
+         xmlns:mx="library://ns.adobe.com/flex/mx"
+         minHeight="120"
+         creationComplete="group1_creationCompleteHandler(event)"
+         currentState="staticEffect"
+         xmlns:editerElements="itext.views.editerElements.*">
+
+    <s:layout>
+        <s:BasicLayout />
+    </s:layout>
+
+    <s:states>
+        <s:State id="staticEffect"
+                 name="staticEffect" />
+        <s:State id="movementEffect"
+                 name="movementEffect" />
+    </s:states>
+
+    <fx:Script>
+        <![CDATA[
+            import com.jing.component.colorPicker.CustomColorPicker;
+            import com.jing.component.colorPicker.events.CustomColorPickerEvent;
+
+            import itext.components.ITextEditer;
+            import itext.constants.EffectTypeConstant;
+            import itext.constants.TriggerConstant;
+            import itext.events.InTextEditerEvent;
+            import itext.framework.IconFactory;
+            import itext.framework.KeywordBorderFactory;
+            import itext.skin.ImgButtonSkin;
+            import itext.vo.EffectVO;
+            import itext.vo.KeywordVO;
+
+            import mx.collections.ArrayCollection;
+            import mx.events.ColorPickerEvent;
+            import mx.events.FlexEvent;
+            import mx.events.ListEvent;
+
+            import spark.events.IndexChangeEvent;
+
+            //绑定的IText组件
+            private var inTextEditer:ITextEditer = null;
+
+            //触发条件
+            private var staticTrigger:String = TriggerConstant.MOUSE_CLICK;
+
+            private var fontColorPicker:CustomColorPicker = new CustomColorPicker();
+
+            private var borderColorPicker:CustomColorPicker = new CustomColorPicker();
+
+            private var borderColor:uint = 0;
+
+            [Bindable]
+            private var borders:ArrayCollection = new ArrayCollection([{label: "无", value: ""}, {label: "下划线", value: KeywordBorderFactory.UNDERLINE}, {label: "波浪线", value: KeywordBorderFactory.WAVELINE}, {label: "双下划线", value: KeywordBorderFactory.DOUBLE_UNDERLINE}, {label: "边框", value: KeywordBorderFactory.BORDER}, {label: "虚线", value: KeywordBorderFactory.DOTTED_LINE}, {label: "背景框", value: KeywordBorderFactory.BACKGROUND}]);
+
+            //可否设置触发条件
+            [Bindable]
+            private var setStaticTriggerEnable:Boolean = false;
+
+            //可否设置特效条件
+            [Bindable]
+            private var setEffectTriggerEnable:Boolean = false;
+
+            //效果列表
+            [Bindable]
+            private var effectList:ArrayCollection = new ArrayCollection();
+
+            [Bindable]
+            private var effectTypes:ArrayCollection = new ArrayCollection(EffectTypeConstant.EFFECTS);
+
+            private var movementTrigger:String = TriggerConstant.MOUSE_CLICK;
+
+            protected function group1_creationCompleteHandler(event:FlexEvent):void
+            {
+                (btnBGColor.skin as ImgButtonSkin).leftImg = IconFactory.ICO_TACOLOR;
+                (btnBGColor.skin as ImgButtonSkin).rightImg = IconFactory.ICO_ARROW;
+                (btnDel.skin as ImgButtonSkin).leftImg = IconFactory.ICO_DELETE;
+
+                fontColorPicker.addEventListener(CustomColorPickerEvent.CHANGE_COLOR, fontColorPicker_changeColorHandler);
+                borderColorPicker.addEventListener(CustomColorPickerEvent.CHANGE_COLOR, borderColorPicker_changeColorHandler);
+            }
+
+            private function fontColorPicker_changeColorHandler(e:CustomColorPickerEvent):void
+            {
+                colorPickerFont.selectedColor = e.color;
+                setStaticTriggerEnable = true;
+                updateToEditer();
+            }
+
+            private function borderColorPicker_changeColorHandler(e:CustomColorPickerEvent):void
+            {
+                borderColor = e.color;
+                updateToEditer();
+            }
+
+            private function stateChange():void
+            {
+                this.currentState = rbStatic.selected ? "staticEffect" : "movementEffect";
+            }
+
+            /*----------------公共方法--------------------*/
+            //
+            //
+            //
+
+            /**
+             * 设置要管理的IText组件
+             *
+             */
+            public function manageInTextEditer(target:ITextEditer):void
+            {
+                if (inTextEditer != null)
+                {
+                    inTextEditer.removeEventListener(InTextEditerEvent.EDITER_CHANGE, inTextEditer_editerChangeHandler);
+                    inTextEditer.removeEventListener(InTextEditerEvent.TEXT_SELECTION, inTextEditer_textSelectionHandler);
+                }
+                inTextEditer = target;
+                inTextEditer.addEventListener(InTextEditerEvent.EDITER_CHANGE, inTextEditer_editerChangeHandler);
+                inTextEditer.addEventListener(InTextEditerEvent.TEXT_SELECTION, inTextEditer_textSelectionHandler);
+                //                comboBoxBorder.textInput.editable = false;
+
+                preBuriedList.update(inTextEditer.getKeywords(), inTextEditer.getQuestions(), inTextEditer.getEffects(), true, false, true);
+            }
+
+            /*-------------------------------------------*/
+
+            /*-------------------------------------------*/
+
+            /**
+             * 监听到的由IText组件广播出来的文本划选事件时，判断选中
+             * 的范围是否具有关键词设置，如果有的话在控件菜单中显示
+             * 对应的设置内容
+             *
+             */
+            private function inTextEditer_textSelectionHandler(e:InTextEditerEvent):void
+            {
+                var checkKeyword:Object = inTextEditer.checkKeyword(inTextEditer.selectionBeginIndex, inTextEditer.selectionEndIndex);
+
+                if (checkKeyword is KeywordVO)
+                {
+                    var keyword:KeywordVO = checkKeyword as KeywordVO;
+                    colorPickerFont.selectedColor = keyword.fontColor;
+
+                    for (var i:int = 0; i < borders.length; i++)
+                    {
+                        if (borders[i].value == keyword.border)
+                        {
+                            comboBoxBorder.selectedItem = borders[i];
+                        }
+                    }
+                    //                    colorPickerBorder.selectedColor = keyword.borderColor;
+                    setStaticTriggerEnable = true;
+
+                    switch (keyword.trigger)
+                    {
+                        case TriggerConstant.MOUSE_CLICK:
+                            rbStaticClick.selected = true;
+                            break;
+                        case TriggerConstant.MOUSE_OVER:
+                            rbStaticOver.selected = true;
+                            break;
+                    }
+                }
+                else if (checkKeyword == true)
+                {
+                    colorPickerFont.selectedColor = 0x000000;
+                    comboBoxBorder.selectedIndex = 0;
+                    //                    colorPickerBorder.selectedColor = 0x000000;
+                    setStaticTriggerEnable = false;
+                    rbStaticClick.selected = true;
+                    btnBGColor.enabled = false;
+                }
+
+                preBuriedList.setSelect(inTextEditer.selectionBeginIndex, inTextEditer.selectionEndIndex);
+            }
+
+            /**
+             * IText的Editer组件反正了编辑改变广播出事件时，更新“设置列表”
+             */
+            private function inTextEditer_editerChangeHandler(e:InTextEditerEvent):void
+            {
+                preBuriedList.update(e.keywords, e.questions, e.effects, true, false, true);
+            }
+
+            /**
+             * 改变触发条件
+             */
+            private function changeStaticTrigger():void
+            {
+                if (rbStaticClick.selected == true)
+                {
+                    staticTrigger = TriggerConstant.MOUSE_CLICK;
+                }
+                else if (rbStaticOver.selected == true)
+                {
+                    staticTrigger = TriggerConstant.MOUSE_OVER;
+                }
+                updateToEditer();
+            }
+
+            /*---------------------控件产生的改变预埋设置的事件----------------*/
+            //
+            //
+            //
+            //
+
+            protected function colorPickerFont_changeHandler(event:ColorPickerEvent):void
+            {
+                setStaticTriggerEnable = true;
+                updateToEditer();
+            }
+
+            protected function colorPickerBorder_changeHandler(event:ColorPickerEvent):void
+            {
+                updateToEditer();
+            }
+
+            protected function comboBoxBorder_changeHandler(event:IndexChangeEvent):void
+            {
+                setStaticTriggerEnable = true;
+                updateToEditer();
+
+                btnBGColor.enabled = (comboBoxBorder.selectedIndex != 0);
+            }
+
+            /**
+             *按照控件中的配置来设置ITextEditer的关键词
+             *
+             */
+            private function updateToEditer():void
+            {
+                //				var delayTime:Number = 0;
+                //				delayTime = Number(textInputDelay.text);
+
+                var border:String = "";
+
+                if (comboBoxBorder.selectedItem != null)
+                {
+                    border = comboBoxBorder.selectedItem.value;
+                }
+                inTextEditer.setKeyword(uint(colorPickerFont.value), border, borderColor, staticTrigger);
+            }
+
+            //---------------------特效设置部分-----------------------------
+
+            private function changeMovementTrigger():void
+            {
+                if (rbMovementClick.selected == true)
+                {
+                    movementTrigger = TriggerConstant.MOUSE_CLICK;
+                }
+                else if (rbMovementOver.selected == true)
+                {
+                    movementTrigger = TriggerConstant.MOUSE_OVER;
+                }
+
+                setEffect();
+            }
+
+            private function preBuiredItemsList_changeHandler(e:IndexChangeEvent):void
+            {
+                inTextEditer.setSelection(effectList[e.newIndex].beginIndex, effectList[e.newIndex].endIndex, false);
+            }
+
+            private function comboEffect_changeHandler(e:IndexChangeEvent):void
+            {
+                if (e.newIndex != 0)
+                {
+                    setEffectTriggerEnable = true;
+                    setEffect();
+                }
+                else
+                {
+                    setEffectTriggerEnable = false;
+                }
+            }
+
+            protected function comboActions_changeHandler(event:IndexChangeEvent):void
+            {
+                setEffect();
+            }
+
+            private function setEffect():void
+            {
+                inTextEditer.setEffect(comboEffect.selectedItem.data, movementTrigger);
+            }
+
+            protected function btnDelPreBuried_clickHandler(event:MouseEvent):void
+            {
+                if (preBuriedList.selectedItems != null)
+                {
+                    //缓存
+                    var delArray:Array = new Array();
+                    var i:int = 0;
+
+                    for (i = 0; i < preBuriedList.selectedItems.length; i++)
+                    {
+                        delArray.push(preBuriedList.selectedItems[i]);
+                    }
+
+                    for (i = 0; i < delArray.length; i++)
+                    {
+                        inTextEditer.delPreburied(delArray[i]);
+                    }
+                }
+            }
+
+
+            protected function colorPickerFont_mouseDownHandler(event:MouseEvent):void
+            {
+                colorPickerFont.close();
+            }
+
+
+            protected function colorPickerFont_clickHandler(event:MouseEvent):void
+            {
+                fontColorPicker.show(event.currentTarget as DisplayObject);
+            }
+
+
+            protected function btnBGColor_clickHandler(event:MouseEvent):void
+            {
+                borderColorPicker.show(event.currentTarget as DisplayObject);
+            }
+
+            protected function preBuriedList_changeHandler(event:ListEvent):void
+            {
+                // TODO Auto-generated method stub
+                //				trace(event);
+                var vo:Object = preBuriedList.dataProvider[event.rowIndex];
+                inTextEditer.setSelection(vo["beginIndex"], vo["endIndex"], false);
+            }
+        ]]>
+    </fx:Script>
+
+    <fx:Declarations>
+        <!-- 将非可视元素（例如服务、值对象）放在此处 -->
+    </fx:Declarations>
+
+    <s:HGroup paddingLeft="10">
+
+        <s:VGroup paddingTop="12"
+                  paddingBottom="15"
+				  width="385">
+
+            <s:RadioButton id="rbStatic"
+                           label="静态效果"
+                           selected="true"
+                           click="stateChange()" 
+						   color="0x656565"/>
+
+            <!--
+                 *********静态效果设置部分*********************
+            -->
+
+            <s:HGroup verticalAlign="middle"
+                      includeIn="staticEffect"
+					  paddingLeft="28">
+
+                <s:BitmapImage source="{IconFactory.ICO_A}" />
+
+                <s:Label text="效果："
+						 paddingRight="5"
+						 color="0x656565"/>
+
+                <mx:ColorPicker id="colorPickerFont"
+                                change="colorPickerFont_changeHandler(event)"
+                                mouseDown="colorPickerFont_mouseDownHandler(event)"
+                                click="colorPickerFont_clickHandler(event)" />
+
+                <s:Label text=" |  边框" 
+						 color="0x656565"
+						 paddingRight="3"/>
+
+                <s:DropDownList id="comboBoxBorder"
+                                dataProvider="{borders}"
+                                selectedIndex="0"
+                                contentBackgroundAlpha="1"
+                                change="comboBoxBorder_changeHandler(event)" 
+								width="90"/>
+
+                <s:Button id="btnBGColor"
+                          skinClass="itext.skin.ImgButtonSkin"
+                          label="颜色"
+                          enabled="false"
+                          click="btnBGColor_clickHandler(event)" />
+                <!--
+                     <mx:ColorPicker id="colorPickerBorder"
+                     enabled="false"
+                     change="colorPickerBorder_changeHandler(event)" />
+                -->
+            </s:HGroup>
+
+            <s:HGroup verticalAlign="middle"
+                      includeIn="staticEffect"
+					  paddingLeft="28">
+
+                <s:BitmapImage source="{IconFactory.ICO_MOUSE}" />
+
+                <s:Label text="开始："
+						 paddingRight="5"
+						 color="0x656565"/>
+
+                <s:RadioButton id="rbStaticClick"
+                               label="单击时"
+                               groupName="staticTrigger"
+                               enabled="{setStaticTriggerEnable}"
+                               click="changeStaticTrigger()"
+                               selected="true" />
+				
+				<s:Label text=""
+						 paddingRight="3"/>
+
+                <s:RadioButton id="rbStaticOver"
+                               label="悬停时"
+                               groupName="staticTrigger"
+                               enabled="{setStaticTriggerEnable}"
+                               click="changeStaticTrigger()" />
+            </s:HGroup>
+
+            <s:RadioButton id="rbMovement"
+                           label="动态效果"
+                           click="stateChange()" 
+						   color="0x656565"/>
+
+            <!--
+                 *********动态特效设置部分*********************
+            -->
+
+            <s:HGroup verticalAlign="middle"
+                      includeIn="movementEffect"
+					  paddingLeft="28">
+
+                <s:BitmapImage source="{IconFactory.ICO_MOTION}" />
+
+                <s:Label text="效果："
+                         paddingRight="5" 
+						 color="0x656565"/>
+
+                <s:DropDownList id="comboEffect"
+                                dataProvider="{effectTypes}"
+                                selectedIndex="0"
+                                contentBackgroundAlpha="1.0"
+                                change="comboEffect_changeHandler(event)" 
+								width="95"/>
+            </s:HGroup>
+
+            <s:HGroup verticalAlign="middle"
+                      includeIn="movementEffect"
+					  paddingLeft="28">
+
+                <s:BitmapImage source="{IconFactory.ICO_MOUSE}" />
+
+                <s:Label text="开始："
+                         paddingRight="5"
+						 color="0x656565"/>
+
+                <s:RadioButton id="rbMovementClick"
+                               label="单击时"
+                               groupName="movementTrigger"
+                               enabled="{setEffectTriggerEnable}"
+                               selected="true"
+                               click="changeMovementTrigger()"/>
+				
+				<s:Label text=""
+						 paddingRight="3"/>
+
+                <s:RadioButton id="rbMovementOver"
+                               label="悬停时"
+                               groupName="movementTrigger"
+                               enabled="{setEffectTriggerEnable}"
+                               click="changeMovementTrigger()" />
+            </s:HGroup>
+        </s:VGroup>
+
+        <s:VGroup paddingTop="8"
+                  paddingBottom="8"
+                  height="100%"
+				  gap="0">
+
+            <s:HGroup verticalAlign="middle"
+                      width="100%">
+
+                <s:Label text="效果列表"
+                         color="0x666666" />
+
+                <s:HGroup horizontalAlign="right"
+                          width="100%">
+
+                    <s:Button id="btnDel"
+                              label="删除"
+                              width="58"
+                              color="0x666666"
+                              skinClass="itext.skin.ImgButtonSkin"
+                              click="btnDelPreBuried_clickHandler(event)" />
+                </s:HGroup>
+            </s:HGroup>
+
+            <editerElements:PreBuriedList id="preBuriedList"
+                                          height="82"
+                                          width="300"
+                                          change="preBuriedList_changeHandler(event)" />
+        </s:VGroup>
+    </s:HGroup>
+</s:Group>

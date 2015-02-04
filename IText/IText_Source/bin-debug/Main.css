@@ -1,0 +1,12 @@
+/* CSS file */
+@namespace s "library://ns.adobe.com/flex/spark";
+@namespace mx "library://ns.adobe.com/flex/mx";
+
+
+global
+{
+	font-size: 12;
+	font-family: "宋体";
+	content-background-color: #FDFCFC;
+	content-background-alpha: 0.0;
+}

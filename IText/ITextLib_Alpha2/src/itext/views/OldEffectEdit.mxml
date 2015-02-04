@@ -1,0 +1,189 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:Group xmlns:fx="http://ns.adobe.com/mxml/2009"
+         xmlns:s="library://ns.adobe.com/flex/spark"
+         xmlns:mx="library://ns.adobe.com/flex/mx"
+         xmlns:views="itext.views.*"
+         xmlns:editerElements="itext.views.editerElements.*">
+    <s:layout>
+        <s:BasicLayout />
+    </s:layout>
+
+    <fx:Script>
+        <![CDATA[
+			import itext.components.ITextEditer;
+			import itext.constants.EffectTypeConstant;
+			import itext.constants.TriggerConstant;
+			import itext.events.InTextEditerEvent;
+			import itext.vo.EffectVO;
+			
+			import mx.collections.ArrayCollection;
+			import mx.events.ColorPickerEvent;
+			
+			import spark.events.IndexChangeEvent;
+
+            private var inTextEditer:ITextEditer = null;
+
+            //效果列表
+            [Bindable]
+            private var effectList:ArrayCollection = new ArrayCollection();
+
+            [Bindable]
+            private var effectTypes:ArrayCollection = new ArrayCollection(EffectTypeConstant.EFFECTS);
+
+
+            public function manageInTextEditer(target:ITextEditer):void
+            {
+				if(inTextEditer != null)
+				{
+					inTextEditer.removeEventListener(InTextEditerEvent.EDITER_CHANGE, inTextEditer_editerChangeHandler);
+				}
+                inTextEditer = target;
+                inTextEditer.addEventListener(InTextEditerEvent.EDITER_CHANGE, inTextEditer_editerChangeHandler);
+                comboEffect.textInput.editable = false;
+                preBuriedList.update(inTextEditer.getKeywords(), inTextEditer.getQuestions(), inTextEditer.getEffects());
+            }
+
+            private function inTextEditer_editerChangeHandler(e:InTextEditerEvent):void
+            {
+                preBuriedList.update(e.keywords, e.questions, e.effects);
+            }
+
+            private var trigger:String = TriggerConstant.MOUSE_CLICK;
+
+
+            private function changeTrigger():void
+            {
+                if (rbClick.selected == true)
+                {
+                    trigger = TriggerConstant.MOUSE_CLICK;
+                }
+                else if (rbOver.selected == true)
+                {
+                    trigger = TriggerConstant.MOUSE_OVER;
+                }
+                else if (rbTime.selected == true)
+                {
+                    trigger = TriggerConstant.TIME;
+                }
+
+                setEffect();
+            }
+
+            private function updateList():void
+            {
+                effectList.removeAll();
+                var effectVO:EffectVO = null;
+
+                for each (var effect:XML in inTextEditer.getIText().PreBurieds.PreBuried)
+                {
+                    trace(effect.@beginIndex, "-------", effect.@endIndex);
+                    effectVO = new EffectVO();
+                    //                    effectVO.content = inTextEditer.getTextArea().text.substring(effect.@beginIndex, effect.@endIndex);
+                    effectVO.beginIndex = int(effect.@beginIndex);
+                    effectVO.endIndex = int(effect.@endIndex);
+                    effectList.addItem(effectVO);
+                }
+            }
+
+
+            private function preBuiredItemsList_changeHandler(e:IndexChangeEvent):void
+            {
+                inTextEditer.setSelection(effectList[e.newIndex].beginIndex, effectList[e.newIndex].endIndex, false);
+            }
+
+            private function comboEffect_changeHandler(e:IndexChangeEvent):void
+            {
+                setEffect();
+            }
+
+            protected function comboActions_changeHandler(event:IndexChangeEvent):void
+            {
+                setEffect();
+            }
+
+            private function setEffect():void
+            {
+                inTextEditer.setEffect(comboEffect.selectedItem.data, trigger);
+            }
+
+            protected function btnDelPreBuried_clickHandler(event:MouseEvent):void
+            {
+                if (preBuriedList.selectedItems != null)
+                {
+                    //缓存
+                    var delArray:Array = new Array();
+                    var i:int = 0;
+
+                    for (i = 0; i < preBuriedList.selectedItems.length; i++)
+                    {
+                        delArray.push(preBuriedList.selectedItems[i]);
+                    }
+
+                    for (i = 0; i < delArray.length; i++)
+                    {
+                        inTextEditer.delPreburied(delArray[i]);
+                    }
+                }
+            }
+        ]]>
+    </fx:Script>
+
+
+    <fx:Declarations>
+        <!-- 将非可视元素（例如服务、值对象）放在此处 -->
+    </fx:Declarations>
+
+    <s:HGroup width="100%">
+        <s:VGroup paddingRight="40">
+            <mx:Label text="特效"
+                      fontWeight="bold" />
+            <s:HGroup verticalAlign="middle">
+                <s:Label text="效果"
+                         enabled="false" />
+                <s:ComboBox width="60"
+                            id="comboEffect"
+                            dataProvider="{effectTypes}"
+                            selectedIndex="0"
+                            contentBackgroundAlpha="1.0"
+                            change="comboEffect_changeHandler(event)" />
+            </s:HGroup>
+        </s:VGroup>
+        <s:VGroup paddingRight="50">
+            <mx:Label text="触发条件"
+                      fontWeight="bold" />
+            <s:HGroup>
+                <s:RadioButton id="rbClick"
+                               label="鼠标单击"
+                               selected="true"
+                               click="changeTrigger()" />
+            </s:HGroup>
+            <s:HGroup>
+                <s:RadioButton id="rbOver"
+                               label="鼠标悬停"
+                               click="changeTrigger()" />
+            </s:HGroup>
+            <s:HGroup>
+                <s:RadioButton id="rbTime"
+                               label="定时"
+                               enabled="false"
+                               click="changeTrigger()" />
+                <s:TextInput click="{rbTime.selected = true}"
+                             restrict="0-9"
+                             maxChars="3" />
+                <s:Label text="秒" />
+            </s:HGroup>
+        </s:VGroup>
+        <s:VGroup width="100%">
+            <s:VGroup gap="0">
+                <mx:Label text="设置列表"
+                          fontWeight="bold" />
+                <editerElements:PreBuriedList id="preBuriedList"
+                                              height="60"
+                                              width="300" />
+                <s:Button id="btnDelPreBuried"
+                          label="删除"
+                          click="btnDelPreBuried_clickHandler(event)" />
+            </s:VGroup>
+        </s:VGroup>
+    </s:HGroup>
+</s:Group>

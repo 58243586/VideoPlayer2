@@ -1,0 +1,48 @@
+/* CSS file */
+@namespace s "library://ns.adobe.com/flex/spark";
+@namespace mx "library://ns.adobe.com/flex/mx";
+
+.firstButtonBarButton{
+	disabledSkin:Embed(source="./imgs/text_align_left_disable.png");
+	upSkin:Embed(source="./imgs/text_align_left_normal.png");
+	downSkin:Embed(source="./imgs/text_align_left_down.png");
+	overSkin:Embed(source="./imgs/text_align_left_over.png");
+		
+	selectedDisabledSkin:Embed(source="./imgs/text_align_left_disable.png");
+	selectedUpSkin:Embed(source="./imgs/text_align_left_down.png");
+	selectedDownSkin:Embed(source="./imgs/text_align_left_down.png");
+	selectedOverSkin:Embed(source="./imgs/text_align_left_over.png");
+ 
+	width:21;
+	height:21;
+}
+
+.buttonBarButton{
+	disabledSkin:Embed(source="./imgs/text_align_center_disable.png");
+	upSkin:Embed(source="./imgs/text_align_center_normal.png");
+	downSkin:Embed(source="./imgs/text_align_center_down.png");
+	overSkin:Embed(source="./imgs/text_align_center_over.png");
+	
+	selectedDisabledSkin:Embed(source="./imgs/text_align_center_disable.png");
+	selectedUpSkin:Embed(source="./imgs/text_align_center_down.png");
+	selectedDownSkin:Embed(source="./imgs/text_align_center_down.png");
+	selectedOverSkin:Embed(source="./imgs/text_align_center_over.png");
+	
+	width:21;
+	height:21;
+}
+
+.lastButtonBarButton{
+	disabledSkin:Embed(source="./imgs/text_align_right_disable.png");
+	upSkin:Embed(source="./imgs/text_align_right_normal.png");
+	downSkin:Embed(source="./imgs/text_align_right_down.png");
+	overSkin:Embed(source="./imgs/text_align_right_over.png");
+	
+	selectedDisabledSkin:Embed(source="./imgs/text_align_right_disable.png");
+	selectedUpSkin:Embed(source="./imgs/text_align_right_down.png");
+	selectedDownSkin:Embed(source="./imgs/text_align_right_down.png");
+	selectedOverSkin:Embed(source="./imgs/text_align_right_over.png");
+	
+	width:21;
+	height:21;
+}

@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="utf-8"?>
+<singletomComponents:SingletonTitleWindow xmlns:fx="http://ns.adobe.com/mxml/2009" xmlns:s="library://ns.adobe.com/flex/spark" xmlns:mx="library://ns.adobe.com/flex/mx"
+                                          xmlns:SingletonComponents="framework.SingletonComponents.*" width="400" height="300"
+                                          title="设置文本边框" xmlns:singletomComponents="itext.framework.singletomComponents.*">
+    <fx:Declarations>
+        <!-- 将非可视元素（例如服务、值对象）放在此处 -->
+    </fx:Declarations>
+
+    <fx:Script>
+        <![CDATA[
+            import itext.constants.TextBorderConstant;
+            import itext.events.TextBorderSetWindowEvent;
+
+            import mx.collections.ArrayCollection;
+
+            static private var instance:TextBorderSetWindow = new TextBorderSetWindow();
+
+            static public function getInstance():TextBorderSetWindow
+            {
+                return instance;
+            }
+
+            public function update(borderName:String = null):void
+            {
+                borderList.dataProvider = new ArrayCollection(TextBorderConstant.borders);
+
+                if (borderName != null)
+                {
+                    borderList.selectedIndex = TextBorderConstant.borders.indexOf(borderName);
+                }
+            }
+
+            protected function btnSubmit_clickHandler(event:MouseEvent):void
+            {
+                if (borderList.selectedItem != null)
+                {
+                    this.dispatchEvent(new TextBorderSetWindowEvent(TextBorderSetWindowEvent.BORDER_SET, borderList.selectedItem.toString()));
+                }
+                this.close();
+            }
+        ]]>
+    </fx:Script>
+    <s:VGroup width="100%" height="100%">
+        <s:List id="borderList" itemRenderer="itext.views.editerElements.TextBorderListItem" width="100%"
+                height="100%">
+            <s:layout>
+                <!-- 设置布局为TileLayout，并设置requestedColumnCount,requestedRowCount即得到疑似TileList -->
+                <!-- 并且新增两个属性horizontalGap,verticalGap可以设置每一项的间距 -->
+                <s:TileLayout requestedColumnCount="3" requestedRowCount="3" horizontalGap="3"
+                              verticalGap="3" />
+            </s:layout>
+        </s:List>
+        <s:Button label="确定" id="btnSubmit" click="btnSubmit_clickHandler(event)" />
+    </s:VGroup>
+</singletomComponents:SingletonTitleWindow>

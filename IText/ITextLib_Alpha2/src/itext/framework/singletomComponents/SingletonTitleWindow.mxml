@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:TitleWindow xmlns:fx="http://ns.adobe.com/mxml/2009"
+               xmlns:s="library://ns.adobe.com/flex/spark"
+               xmlns:mx="library://ns.adobe.com/flex/mx"
+               width="400"
+               height="300"
+               close="closeHandler(event)">
+    <s:layout>
+        <s:BasicLayout/>
+    </s:layout>
+    <fx:Declarations>
+        <!-- 将非可视元素（例如服务、值对象）放在此处 -->
+    </fx:Declarations>
+
+    <fx:Script>
+        <![CDATA[
+            import mx.core.FlexGlobals;
+            import mx.events.CloseEvent;
+            import mx.managers.PopUpManager;
+
+            /**
+             * 呈现该组件
+             */
+            public function show():void
+            {
+                if (this.stage == null)
+                {
+                    PopUpManager.addPopUp(this, FlexGlobals.topLevelApplication.document, false);
+                    PopUpManager.centerPopUp(this);
+                }
+            }
+
+            /**
+             * 隐藏/关闭该组件
+             */
+            public function close():void
+            {
+                if (this.stage != null)
+                {
+                    PopUpManager.removePopUp(this);
+                }
+            }
+
+            protected function closeHandler(event:CloseEvent):void
+            {
+                close();
+            }
+        ]]>
+    </fx:Script>
+</s:TitleWindow>

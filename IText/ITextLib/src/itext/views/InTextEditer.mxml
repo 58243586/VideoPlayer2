@@ -1,0 +1,1274 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:Group xmlns:fx="http://ns.adobe.com/mxml/2009"
+         xmlns:s="library://ns.adobe.com/flex/spark"
+         xmlns:mx="library://ns.adobe.com/flex/mx"
+         width="400"
+         height="300"
+         implements="itext.interfaces.ITextEditer"
+         creationComplete="iText_creationComplete()"
+         xmlns:components="itext.components.*">
+    <s:layout>
+        <s:BasicLayout />
+    </s:layout>
+    <fx:Script>
+        <![CDATA[
+            import flash.text.engine.FontWeight;
+            import flash.text.engine.TextRotation;
+
+            import flashx.textLayout.formats.BackgroundColor;
+            import flashx.textLayout.formats.TextDecoration;
+            import flashx.textLayout.formats.TextLayoutFormat;
+
+            import itext.constants.EffectTypeConstant;
+            import itext.constants.TextBorderConstant;
+            import itext.constants.TriggerConstant;
+            import itext.events.InTextEditerEvent;
+            import itext.interfaces.ITextEditer;
+            import itext.interfaces.ITextPlayer;
+            import itext.views.elements.AnswerMark;
+            import itext.views.elements.EffectMark;
+            import itext.views.elements.KeywordMark;
+            import itext.views.elements.QuestionBorder;
+            import itext.views.elements.QuestionMark;
+            import itext.views.elements.RectBlock;
+            import itext.views.elements.TextBorder;
+            import itext.vo.AnswerVO;
+            import itext.vo.EffectVO;
+            import itext.vo.KeywordVO;
+            import itext.vo.QuestionVO;
+
+            import mx.collections.ArrayCollection;
+            import mx.controls.Alert;
+            import mx.controls.TextArea;
+            import mx.core.UIComponent;
+            import mx.core.UITextField;
+            import mx.core.mx_internal;
+            import mx.events.ResizeEvent;
+            import mx.managers.PopUpManager;
+
+            import spark.components.Label;
+            import spark.components.List;
+
+            [Bindable]
+            private var paddingX:int = 10;
+
+            //Itext数据
+            private var itextXML:XML = null;
+
+            //是否更新
+            private var isUpdateXML:Boolean = false;
+
+
+            private function iText_creationComplete():void
+            {
+//                textArea.setStyle("borderAlpha", 0);
+//                textArea.setStyle("contentBackgroundAlpha", 0);
+                oldLength = textArea.length;
+                textArea.addEventListener(Event.CHANGE, textArea_changeHandler);
+                textArea.addEventListener(ResizeEvent.RESIZE, textArea_resizeHandler);
+                textArea.addEventListener(MouseEvent.MOUSE_UP, textArea_mouseUpHandler);
+                textArea.getTextField().alwaysShowSelection = true;
+                setTextBorder(TextBorderConstant.BORDER_ONE);
+
+                if (isUpdateXML == false && itextXML != null)
+                {
+                    setIText(itextXML);
+                }
+            }
+
+            private var oldLength:int = 0;
+
+            private function textArea_resizeHandler(e:ResizeEvent):void
+            {
+                updateMarks();
+
+//                if (backGroundColor != 0)
+//                {
+//                    this.graphics.clear();
+//                    this.setBackgroundColor(backGroundColor);
+//                }
+//                else
+//                {
+                this.setTextBorder(textBorder.borderName);
+//                }
+            }
+
+            private function textArea_mouseUpHandler(e:MouseEvent):void
+            {
+//                if (textArea.selectionBeginIndex != textArea.selectionEndIndex)
+//                {
+                this.dispatchEvent(new InTextEditerEvent(InTextEditerEvent.TEXT_SELECTION, keywords, questions, effects));
+//                }
+            }
+
+            private function textArea_changeHandler(e:Event):void
+            {
+//				trace("文本改变,光标位置:", textArea.selectionBeginIndex);
+
+                var changeCount:int = textArea.length - oldLength;
+
+                if (changeCount > 0)
+                {
+//					trace("输入字符，数量：", changeCount);
+                    updateIndexs(textArea.selectionBeginIndex, changeCount);
+                }
+                else if (changeCount < 0)
+                {
+//					trace("删除字符，数量：", changeCount);
+                    updateIndexs(textArea.selectionBeginIndex, changeCount);
+                }
+
+                oldLength = textArea.length;
+
+                updateMarks();
+
+                if (textArea.textHeight >= textArea.height)
+                {
+                    textArea.height = textArea.textHeight + 30;
+                }
+            }
+
+            /**
+             * 处理内部索引有改变的标记
+             *
+             */
+            private function delayIndexChange(caretIndex:int, changeCount:int, preburiedVO:Object):Boolean
+            {
+                //改变前光标的位置
+                var oldIndex:int = caretIndex - changeCount;
+
+                //删除操作的光标索引位置起点
+                var delBeginIndex:int = Math.min(caretIndex, caretIndex - changeCount);
+                //删除操作的光标索引位置终点
+                var delEndIndex:int = Math.max(caretIndex, caretIndex - changeCount);
+                trace("改变的索引区间是：", delBeginIndex, " 到 ", delEndIndex);
+
+                //是否有标记的内容被改变
+                var isChangeInMark:Boolean = false;
+
+                if (changeCount > 0) //如果是增加字符串
+                {
+                    if (preburiedVO.beginIndex >= oldIndex)
+                    {
+                        preburiedVO.beginIndex += changeCount;
+                        preburiedVO.endIndex += changeCount;
+                    }
+                    else if (preburiedVO.beginIndex < oldIndex && preburiedVO.endIndex > oldIndex)
+                    {
+                        preburiedVO.endIndex += changeCount;
+                        isChangeInMark = true;
+                    }
+                }
+                else if (changeCount < 0)
+                {
+                    isChangeInMark = true;
+
+                    if (preburiedVO.beginIndex >= delEndIndex)
+                    {
+                        preburiedVO.beginIndex += changeCount;
+                        preburiedVO.endIndex += changeCount;
+                        isChangeInMark = false;
+                    }
+                    else if (preburiedVO.beginIndex > delBeginIndex && preburiedVO.beginIndex < delEndIndex && preburiedVO.endIndex > delBeginIndex && preburiedVO.endIndex > delEndIndex)
+                    {
+                        preburiedVO.beginIndex -= (preburiedVO.beginIndex - delBeginIndex);
+                        preburiedVO.endIndex -= (delEndIndex - delBeginIndex);
+                    }
+                    else if (preburiedVO.beginIndex <= delBeginIndex && preburiedVO.beginIndex < delEndIndex && preburiedVO.endIndex > delBeginIndex && preburiedVO.endIndex >= delEndIndex)
+                    {
+                        preburiedVO.endIndex -= (delEndIndex - delBeginIndex);
+                    }
+                    else if (preburiedVO.beginIndex < delBeginIndex && preburiedVO.beginIndex < delEndIndex && preburiedVO.endIndex > delBeginIndex && preburiedVO.endIndex < delEndIndex)
+                    {
+                        preburiedVO.endIndex -= (preburiedVO.endIndex - delBeginIndex);
+                    }
+                    else if (preburiedVO.beginIndex >= delBeginIndex && preburiedVO.endIndex <= delEndIndex)
+                    {
+                        preburiedVO.beginIndex = preburiedVO.endIndex;
+                    }
+                    else
+                    {
+                        isChangeInMark = false;
+                    }
+                }
+
+                if (preburiedVO.beginIndex == preburiedVO.endIndex)
+                {
+                    delPreburied(preburiedVO);
+                }
+                else
+                {
+                    preburiedVO.content = textArea.getTextField().text.substring(preburiedVO.beginIndex, preburiedVO.endIndex);
+                }
+
+                return isChangeInMark;
+            }
+
+            /**
+             * 根据所以更新标记的位置
+             *
+             */
+            private function updateIndexs(caretIndex:int, changeCount:int):void
+            {
+                //是否有标记的内容被改变
+                var isChangeInMark:Boolean = false;
+
+                var i:int = 0;
+
+                var keywords:Vector.<KeywordVO> = new Vector.<KeywordVO>();
+                keywords = this.keywords.concat();
+
+                for (i = 0; i < keywords.length; i++)
+                {
+                    isChangeInMark = delayIndexChange(caretIndex, changeCount, keywords[i]);
+                }
+
+                var effects:Vector.<EffectVO> = new Vector.<EffectVO>();
+                effects = this.effects.concat();
+
+                for (i = 0; i < effects.length; i++)
+                {
+                    isChangeInMark = delayIndexChange(caretIndex, changeCount, effects[i]);
+                }
+
+
+                var j:int = 0;
+
+                var questions:Vector.<QuestionVO> = new Vector.<QuestionVO>();
+                questions = this.questions.concat();
+
+                //删除操作的光标索引位置起点
+                var delBeginIndex:int = Math.min(caretIndex, caretIndex - changeCount);
+                //删除操作的光标索引位置终点
+                var delEndIndex:int = Math.max(caretIndex, caretIndex - changeCount);
+
+                for (i = 0; i < questions.length; i++)
+                {
+                    if (questions[i].questionIndex < delEndIndex && questions[i].questionIndex > delBeginIndex)
+                    {
+                        delQuestion(questions[i]);
+                        continue;
+                    }
+                    else if (questions[i].questionIndex >= caretIndex)
+                    {
+                        questions[i].questionIndex += changeCount;
+                    }
+
+                    var answers:Vector.<AnswerVO> = new Vector.<AnswerVO>();
+                    answers = questions[i].answers.concat();
+
+                    for (j = 0; j < answers.length; j++)
+                    {
+                        isChangeInMark = delayIndexChange(caretIndex, changeCount, answers[j]);
+                    }
+                }
+                /*
+                 * 20100621：在有没有isChangeInMark的情况下都广播事件跟新列表,如果效率不够，则加入判断isChangeInMark
+                 */
+
+//                if (isChangeInMark == true)
+//                {
+                this.dispatchEvent(new InTextEditerEvent(InTextEditerEvent.EDITER_CHANGE, this.keywords, this.questions, this.effects));
+//                }
+            }
+
+            //--------------------数据对象定义-----------------------
+            //
+            //
+            private var keywords:Vector.<KeywordVO> = new Vector.<KeywordVO>();
+
+			private var effects:Vector.<EffectVO> = new Vector.<EffectVO>();
+
+			private var questions:Vector.<QuestionVO> = new Vector.<QuestionVO>();
+
+
+            //--------------------显示对象定义-------------------
+            //
+            //
+            private var keywordMarks:Vector.<KeywordMark> = new Vector.<KeywordMark>();
+
+            private var questionMarks:Vector.<QuestionMark> = new Vector.<QuestionMark>();
+
+            private var answerMarks:Vector.<AnswerMark> = new Vector.<AnswerMark>();
+
+            private var effectMarks:Vector.<EffectMark> = new Vector.<EffectMark>();
+
+            //背景框
+            private var textBorder:TextBorder = new TextBorder();
+
+//            private var backGroundColor:uint = 0xFFFFFF;
+
+
+            //---------------------外部公共接口------------------
+            //
+            //
+            public function getKeywords():Vector.<KeywordVO>
+            {
+                return keywords;
+            }
+
+            public function getEffects():Vector.<EffectVO>
+            {
+                return effects;
+            }
+
+            public function getQuestions():Vector.<QuestionVO>
+            {
+                return questions;
+            }
+
+
+            public function getTextArea():itext.components.TextArea
+            {
+                return textArea;
+            }
+
+            /**
+             *获取IText数据
+             *
+             */
+            public function getIText():XML
+            {
+                return createITextXML();
+            }
+
+            /**
+             * 设置IText数据
+             *
+             */
+            public function setIText(xml:XML):void
+            {
+                itextXML = xml;
+
+                if (this.owner == null)
+                {
+                    return;
+                }
+
+                clear();
+
+                isUpdateXML = true;
+
+                textArea.htmlText = itextXML.Content;
+                textArea.getTextField().htmlText = textArea.htmlText;
+                textArea.validateNow();
+
+                keywords.length = 0;
+                effects.length = 0;
+                questions.length = 0;
+
+//                textArea.width = Number(itextXML.Content.@width);
+//                textArea.height = Number(itextXML.Content.@height);
+
+                var backgroundColor:int = int(itextXML.Content.@backgroundColor);
+                var borderName:String = itextXML.Content.@border;
+
+                if (borderName != "")
+                {
+                    setTextBorder(borderName);
+                    setBackgroundColor(backgroundColor);
+                }
+
+                var keywordVO:KeywordVO = null;
+
+                for each (var keywordNode:XML in itextXML.Keywords.Keyword)
+                {
+                    keywordVO = new KeywordVO();
+                    keywordVO.beginIndex = keywordNode.@beginIndex;
+                    keywordVO.endIndex = keywordNode.@endIndex;
+                    keywordVO.trigger = keywordNode.@trigger;
+                    keywordVO.fontColor = keywordNode.@fontColor;
+                    keywordVO.border = keywordNode.@border;
+                    keywordVO.borderColor = keywordNode.@borderColor;
+                    keywordVO.param = keywordNode.@param;
+                    keywords.push(keywordVO);
+
+                    createKeywordMark(keywordVO);
+                    updateKeywordMark(keywordVO);
+                }
+
+                var effectVO:EffectVO = null;
+
+                for each (var effectNode:XML in itextXML.Effects.Effect)
+                {
+                    effectVO = new EffectVO();
+                    effectVO.beginIndex = int(effectNode.@beginIndex);
+                    effectVO.endIndex = int(effectNode.@endIndex);
+                    effectVO.trigger = effectNode.@trigger;
+                    effectVO.effectType = effectNode.@effectType;
+                    //                    effectVO.effectAction = effectNode.@effectAction;
+                    effectVO.param = effectNode.@param;
+                    effects.push(effectVO);
+
+                    createEffectMark(effectVO);
+                    updateEffectMark(effectVO);
+                }
+
+                var questionVO:QuestionVO = null;
+
+                for each (var questionNode:XML in itextXML.Questions.Question)
+                {
+                    questionVO = new QuestionVO();
+                    questionVO.questionIndex = int(questionNode.@questionIndex);
+                    questionVO.content = questionNode.Content.toString();
+
+                    for each (var answerNode:XML in questionNode.Answers.Answer)
+                    {
+                        var answerVO:AnswerVO = new AnswerVO();
+                        answerVO.beginIndex = int(answerNode.@beginIndex);
+                        answerVO.endIndex = int(answerNode.@endIndex);
+                        answerVO.questionIndex = questionVO.questionIndex;
+                        answerVO.content = answerNode.toString();
+                        questionVO.answers.push(answerVO);
+
+                        createAnswerMark(answerVO);
+                        updateAnswerMark(answerVO);
+                    }
+                    questions.push(questionVO);
+
+                    createQuestionMark(questionVO);
+                    updateQuestionMark(questionVO);
+                }
+
+                this.dispatchEvent(new InTextEditerEvent(InTextEditerEvent.EDITER_CHANGE, keywords, questions, effects));
+            }
+
+            private function createITextXML():XML
+            {
+                var itextXML:XML = <IText><Content/><Keywords/><Effects/><Questions/></IText>;
+                itextXML.Content = textArea.htmlText;
+                itextXML.Content.@border = textBorder.borderName;
+                itextXML.Content.@backgroundColor = textBorder.borderColor;
+                itextXML.Content.@width = textArea.width;
+                itextXML.Content.@height = textArea.height;
+
+                var i:int = 0;
+                var j:int = 0;
+
+                for (i = 0; i < keywords.length; i++)
+                {
+                    var keywordNode:XML = <Keyword/>;
+                    keywordNode.@beginIndex = keywords[i].beginIndex;
+                    keywordNode.@endIndex = keywords[i].endIndex;
+                    keywordNode.@trigger = keywords[i].trigger;
+                    keywordNode.@fontColor = keywords[i].fontColor;
+                    keywordNode.@border = keywords[i].border;
+                    keywordNode.@borderColor = keywords[i].borderColor;
+                    keywordNode.@param = keywords[i].param;
+                    XML(itextXML.Keywords).appendChild(keywordNode);
+                }
+
+                for (i = 0; i < effects.length; i++)
+                {
+                    var effectNode:XML = <Effect/>;
+                    effectNode.@beginIndex = effects[i].beginIndex;
+                    effectNode.@endIndex = effects[i].endIndex;
+                    effectNode.@trigger = effects[i].trigger;
+                    effectNode.@effectType = effects[i].effectType;
+//                    effectNode.@effectAction = effects[i].effectAction;
+                    effectNode.@param = effects[i].param;
+                    XML(itextXML.Effects).appendChild(effectNode);
+                }
+
+                for (i = 0; i < questions.length; i++)
+                {
+                    var questionNode:XML = <Question><Content>{questions[i].content}</Content><Answers/></Question>;
+                    questionNode.@questionIndex = questions[i].questionIndex;
+
+                    for (j = 0; j < questions[i].answers.length; j++)
+                    {
+                        var answerNode:XML = <Answer>{questions[i].answers[j].content}</Answer>;
+                        answerNode.@beginIndex = questions[i].answers[j].beginIndex;
+                        answerNode.@endIndex = questions[i].answers[j].endIndex;
+                        XML(questionNode.Answers).appendChild(answerNode);
+                    }
+                    XML(itextXML.Questions).appendChild(questionNode);
+                }
+                return itextXML;
+            }
+
+            public function getITextNote():void
+            {
+
+            }
+
+            public function setITextNote():void
+            {
+
+            }
+
+            public function getStudyOut():void
+            {
+
+            }
+
+            public function setStudyOut():void
+            {
+
+            }
+
+            /**
+             * 删除预埋
+             */
+            public function delPreburied(valueObject:Object):void
+            {
+                if (valueObject is KeywordVO)
+                {
+                    delKeyword(valueObject as KeywordVO);
+                }
+                else if (valueObject is QuestionVO)
+                {
+                    delQuestion(valueObject as QuestionVO);
+                }
+                else if (valueObject is AnswerVO)
+                {
+                    delAnswer(valueObject as AnswerVO);
+                }
+                else if (valueObject is EffectVO)
+                {
+                    delEffect(valueObject as EffectVO);
+                }
+            }
+
+
+            /**
+             * 设置背景颜色
+             *
+             */
+            public function setBackgroundColor(color:int):void
+            {
+                textBorder.changeColor(color);
+            }
+
+            /**
+             * 设置边框
+             *
+             */
+            public function setTextBorder(textBorderName:String):void
+            {
+//                this.graphics.clear();
+//                backGroundColor = 0;
+                this.addElementAt(textBorder, 0);
+                textBorder.updateBorder(textBorderName, textArea.width + paddingX, textArea.height);
+            }
+
+            //---------------------设置关键词相关-------------------
+            /**
+             * 设置关键词句
+             * @param type 设置效果类型
+             * @param type 触发器类型
+             * @param type 参数
+             */
+            public function setKeyword(fontColor:uint, border:String, borderColor:uint, trigger:String, param:Object = null):void
+            {
+                var beginIndex:int = textArea.selectionBeginIndex;
+                var endIndex:int = textArea.selectionEndIndex;
+
+                if (beginIndex == endIndex)
+                {
+                    //如果没有框选，则跳出
+                    return;
+                }
+
+
+                var checkEffectResult:Object = checkEffect(beginIndex, endIndex);
+                var checkKeywordResult:Object = checkKeyword(beginIndex, endIndex);
+
+                var keywordVO:KeywordVO = null;
+
+                if (checkEffectResult == true && checkKeywordResult == true)
+                {
+                    //创建新的对象
+                    keywordVO = new KeywordVO();
+                    keywords.push(keywordVO);
+                    createKeywordMark(keywordVO);
+                }
+                else if (checkEffectResult == true && checkKeywordResult is KeywordVO)
+                {
+                    //覆盖之前设置的关键词句
+                    keywordVO = checkKeywordResult as KeywordVO;
+
+                    trace("之前的关键词句被覆盖!");
+                }
+                else if (checkEffectResult is EffectVO)
+                {
+                    //覆盖之前设置的特效
+                    keywordVO = new KeywordVO();
+                    keywords.push(keywordVO);
+                    createKeywordMark(keywordVO);
+
+                    //删除在特效中的对象
+//                    var effectIndex:int = effects.indexOf(checkEffectResult);
+//                    effects.splice(effectIndex, 1);
+                    delEffect(checkEffectResult as EffectVO);
+                    trace("之前的特效被覆盖!");
+
+                }
+                else
+                {
+                    Alert.show("有交错！不能设置");
+                }
+
+                if (keywordVO != null)
+                {
+                    keywordVO.beginIndex = beginIndex;
+                    keywordVO.endIndex = endIndex;
+                    keywordVO.fontColor = fontColor;
+                    keywordVO.border = border;
+                    keywordVO.borderColor = borderColor;
+                    keywordVO.trigger = trigger;
+                    keywordVO.param = param;
+                    keywordVO.content = textArea.getTextField().text.substring(beginIndex, endIndex);
+                    updateKeywordMark(keywordVO);
+//					this.dispatchEvent(new Event("change"));
+
+                    this.dispatchEvent(new InTextEditerEvent(InTextEditerEvent.EDITER_CHANGE, keywords, questions, effects));
+                }
+            }
+
+            //--------------------------设置问题-----------------
+            /**
+             * 设置问题
+             * @param 问题的内容
+             */
+            public function setQuestion(content:String):void
+            {
+                var beginIndex:int = textArea.selectionBeginIndex;
+
+                var questionVO:QuestionVO = null;
+
+                for (var i:int = 0; i < questions.length; i++)
+                {
+                    if (questions[i].questionIndex == beginIndex)
+                    {
+                        trace("覆盖了一个之前的问题");
+                        questionVO = questions[i];
+                        break;
+                    }
+                }
+
+                if (questionVO == null)
+                {
+                    questionVO = new QuestionVO();
+                    questions.push(questionVO);
+                    createQuestionMark(questionVO);
+                }
+
+                questionVO.content = content;
+                questionVO.questionIndex = beginIndex;
+
+                updateQuestionMark(questionVO);
+
+                this.dispatchEvent(new InTextEditerEvent(InTextEditerEvent.EDITER_CHANGE, keywords, questions, effects));
+            }
+
+
+            //----------------------设置答案-------------------------
+            /**
+             * 设置问题答案
+             * @param questionIndex 问题索引位置
+             *
+             *
+             */
+            public function setQuestionAnswer(questionIndex:int):void
+            {
+                var beginIndex:int = textArea.selectionBeginIndex;
+                var endIndex:int = textArea.selectionEndIndex;
+
+                if (beginIndex == endIndex)
+                {
+                    return;
+                }
+
+                var question:QuestionVO = null;
+
+                var answerVO:AnswerVO = null;
+
+                for (var i:int = 0; i < questions.length; i++)
+                {
+                    if (questions[i].questionIndex == questionIndex)
+                    {
+                        question = questions[i];
+
+                        for (var answerIndex:int = 0; answerIndex < questions[i].answers.length; answerIndex++)
+                        {
+                            if (questions[i].answers[answerIndex].beginIndex == beginIndex && questions[i].answers[answerIndex].endIndex == endIndex)
+                            {
+                                answerVO = questions[i].answers[answerIndex];
+                                break;
+                            }
+                        }
+                    }
+                }
+
+                if (answerVO == null)
+                {
+                    answerVO = new AnswerVO();
+                    createAnswerMark(answerVO);
+                    question.answers.push(answerVO);
+                }
+
+                answerVO.beginIndex = beginIndex;
+                answerVO.endIndex = endIndex;
+                answerVO.content = textArea.getTextField().text.substring(beginIndex, endIndex);
+
+                updateAnswerMark(answerVO);
+                this.dispatchEvent(new InTextEditerEvent(InTextEditerEvent.EDITER_CHANGE, keywords, questions, effects));
+            }
+
+            //----------------设置特效------------------------
+
+            public function setEffect(effect:String, trigger:String, param:Object = null):void
+            {
+                var beginIndex:int = textArea.selectionBeginIndex;
+                var endIndex:int = textArea.selectionEndIndex;
+
+                if (beginIndex == endIndex)
+                {
+                    return;
+                }
+
+                var checkEffectResult:Object = checkEffect(beginIndex, endIndex);
+                var checkKeywordResult:Object = checkKeyword(beginIndex, endIndex);
+
+                var effectVO:EffectVO = null;
+
+                if (checkKeywordResult == true && checkEffectResult == true)
+                {
+                    //创建新的对象
+                    effectVO = new EffectVO();
+                    effects.push(effectVO);
+                    createEffectMark(effectVO);
+                }
+                else if (checkKeywordResult == true && checkEffectResult is EffectVO)
+                {
+                    //覆盖之前特效词句
+                    effectVO = checkEffectResult as EffectVO;
+
+                    trace("之前的关键词句被覆盖!");
+                }
+                else if (checkKeywordResult is KeywordVO)
+                {
+                    //覆盖之前设置的关键字
+                    effectVO = new EffectVO();
+                    effects.push(effectVO);
+
+                    createEffectMark(effectVO);
+
+                    //删除在关键字中的对象
+//                    var keywordIndex:int = keywords.indexOf(checkKeywordResult);
+//                    keywords.splice(keywordIndex, 1);
+                    delKeyword(checkKeywordResult as KeywordVO);
+
+                    trace("之前的特效被覆盖!");
+
+                }
+                else
+                {
+                    Alert.show("有交错！不能设置");
+                }
+
+                if (effectVO != null)
+                {
+                    effectVO.beginIndex = beginIndex;
+                    effectVO.endIndex = endIndex;
+                    effectVO.effectType = effect;
+                    effectVO.trigger = trigger;
+                    effectVO.param = param;
+                    effectVO.content = textArea.getTextField().text.substring(beginIndex, endIndex);
+                    updateEffectMark(effectVO);
+
+                    this.dispatchEvent(new InTextEditerEvent(InTextEditerEvent.EDITER_CHANGE, keywords, questions, effects));
+                }
+            }
+
+            public function setFormat():void
+            {
+
+            }
+
+            public function setITextMode():void
+            {
+
+            }
+
+            public function setPreBuried():void
+            {
+
+            }
+
+            //--------------------内部方法
+            //
+            //
+
+            /**
+             * 设置选中项
+             *
+             */
+            private function setSelection(beginIndex:int, endIndex:int):void
+            {
+                textArea.getTextField().setSelection(beginIndex, endIndex);
+                this.dispatchEvent(new InTextEditerEvent(InTextEditerEvent.TEXT_SELECTION));
+            }
+
+            //---------------------------关键词句部分----------------------
+            /**
+             * 删除关键词句
+             *
+             */
+            private function delKeyword(keywordVO:KeywordVO):void
+            {
+                for (var i:int = 0; i < keywords.length; i++)
+                {
+                    if (keywordVO == keywords[i])
+                    {
+                        removeKeywordMark(keywords[i]);
+                        keywords.splice(i, 1);
+                        break;
+                    }
+                }
+
+                this.dispatchEvent(new InTextEditerEvent(InTextEditerEvent.EDITER_CHANGE, keywords, questions, effects));
+            }
+
+            private function createKeywordMark(keyword:KeywordVO):void
+            {
+                var keywordMark:KeywordMark = new KeywordMark(keyword);
+                keywordMark.addEventListener(MouseEvent.CLICK, keywordMark_clickHandler);
+                keywordMarks.push(keywordMark);
+
+                this.addElement(keywordMark);
+            }
+
+            private function keywordMark_clickHandler(e:MouseEvent):void
+            {
+                var keywordMark:KeywordMark = e.currentTarget as KeywordMark;
+                setSelection(keywordMark.vo.beginIndex, keywordMark.vo.endIndex);
+            }
+
+            private function removeKeywordMark(keyword:KeywordVO):void
+            {
+                var keywordMark:KeywordMark = null;
+
+                for (var i:int = 0; i < keywordMarks.length; i++)
+                {
+                    if (keywordMarks[i].vo == keyword)
+                    {
+                        keywordMark = keywordMarks[i];
+                        keywordMark.removeEventListener(MouseEvent.CLICK, keywordMark_clickHandler);
+                        keywordMarks.splice(i, 1);
+                        this.removeElement(keywordMark);
+                        break;
+                    }
+                }
+            }
+
+            private function updateKeywordMark(keyword:KeywordVO):void
+            {
+                var keywordMark:KeywordMark = null;
+
+                for (var i:int = 0; i < keywordMarks.length; i++)
+                {
+                    if (keywordMarks[i].vo == keyword)
+                    {
+                        keywordMark = keywordMarks[i];
+
+                        keywordMark.update(keywordMark.vo.beginIndex, keywordMark.vo.endIndex, textArea);
+                        break;
+                    }
+                }
+            }
+
+            //---------------------------问题设置部分----------------------
+
+            private function delQuestion(question:QuestionVO):void
+            {
+                var i:int = 0;
+
+                var answers:Vector.<AnswerVO> = question.answers.concat();
+
+                for (i = 0; i < answers.length; i++)
+                {
+                    delAnswer(answers[i]);
+                }
+
+                for (i = 0; i < questions.length; i++)
+                {
+                    if (question == questions[i])
+                    {
+                        removeQuestionMark(questions[i]);
+                        questions.splice(i, 1);
+                        break;
+                    }
+                }
+
+                this.dispatchEvent(new InTextEditerEvent(InTextEditerEvent.EDITER_CHANGE, keywords, questions, effects));
+            }
+
+
+
+            private function createQuestionMark(question:QuestionVO):void
+            {
+                var questionMark:QuestionMark = new QuestionMark(question);
+                questionMark.addEventListener(MouseEvent.ROLL_OVER, questionMark_rollOverHandler);
+                questionMarks.push(questionMark);
+                this.addElement(questionMark);
+            }
+
+            private function removeQuestionMark(question:QuestionVO):void
+            {
+                var questionMark:QuestionMark = null;
+
+                for (var i:int = 0; i < questionMarks.length; i++)
+                {
+                    if (questionMarks[i].vo == question)
+                    {
+                        questionMark = questionMarks[i];
+                        questionMarks.splice(i, 1);
+                        this.removeElement(questionMark);
+                        break;
+                    }
+                }
+            }
+
+            private function updateQuestionMark(question:QuestionVO):void
+            {
+                var questionMark:QuestionMark = null;
+
+                for (var i:int = 0; i < questionMarks.length; i++)
+                {
+                    if (questionMarks[i].vo == question)
+                    {
+                        questionMark = questionMarks[i];
+
+                        var rect:Rectangle = textArea.getTextField().getCharBoundaries(questionMark.vo.questionIndex);
+
+                        if (rect == null)
+                        {
+                            rect = textArea.getTextField().getCharBoundaries(questionMark.vo.questionIndex - 1);
+                        }
+                        questionMark.x = rect.x + textArea.x;
+                        questionMark.y = rect.y + textArea.y;
+                        break;
+                    }
+                }
+            }
+
+            private var questionBorder:QuestionBorder = new QuestionBorder();
+
+            private function questionMark_rollOverHandler(e:MouseEvent):void
+            {
+                var questionMark:QuestionMark = e.currentTarget as QuestionMark;
+                questionMark.addEventListener(MouseEvent.ROLL_OUT, questionMark_rollOutHandler);
+
+                this.addElement(questionBorder);
+                questionBorder.x = questionMark.x + 15;
+                questionBorder.y = questionMark.y - 5;
+                questionBorder.content = questionMark.vo.content;
+            }
+
+            private function questionMark_rollOutHandler(e:MouseEvent):void
+            {
+                var questionMark:QuestionMark = e.currentTarget as QuestionMark;
+                questionMark.removeEventListener(MouseEvent.ROLL_OUT, questionMark_rollOutHandler);
+
+                this.removeElement(questionBorder);
+            }
+
+            //-------------------------------------答案设置部分----------------------------------------
+
+            /**
+             * 删除答案
+             *
+             */
+            private function delAnswer(answer:AnswerVO):void
+            {
+                for (var questionIndex:int = 0; questionIndex < questions.length; questionIndex++)
+                {
+                    for (var answerIndex:int = 0; answerIndex < questions[questionIndex].answers.length; answerIndex++)
+                    {
+                        if (questions[questionIndex].answers[answerIndex] == answer)
+                        {
+                            removeAnswerMark(questions[questionIndex].answers[answerIndex]);
+                            questions[questionIndex].answers.splice(answerIndex, 1);
+                            break;
+                        }
+                    }
+                }
+
+                this.dispatchEvent(new InTextEditerEvent(InTextEditerEvent.EDITER_CHANGE, keywords, questions, effects));
+            }
+
+            private function createAnswerMark(answer:AnswerVO):void
+            {
+                var answerMark:AnswerMark = new AnswerMark(answer);
+                answerMark.addEventListener(MouseEvent.CLICK, answerMark_clickHandler);
+                answerMarks.push(answerMark);
+                this.addElement(answerMark);
+            }
+
+            private function removeAnswerMark(answer:AnswerVO):void
+            {
+                var answerMark:AnswerMark = null;
+
+                for (var i:int = 0; i < answerMarks.length; i++)
+                {
+                    if (answerMarks[i].vo == answer)
+                    {
+                        answerMark = answerMarks[i];
+                        answerMarks.splice(i, 1);
+                        this.removeElement(answerMark);
+                        break;
+                    }
+                }
+            }
+
+            private function updateAnswerMark(answer:AnswerVO):void
+            {
+                var answerMark:AnswerMark = null;
+
+                for (var i:int = 0; i < answerMarks.length; i++)
+                {
+                    if (answerMarks[i].vo == answer)
+                    {
+                        answerMark = answerMarks[i];
+
+                        var rect:Rectangle = textArea.getTextField().getCharBoundaries(answerMark.vo.beginIndex);
+
+                        answerMark.x = rect.x + textArea.x;
+                        answerMark.y = rect.y + textArea.y;
+                        break;
+                    }
+                }
+            }
+
+            private function answerMark_clickHandler(e:MouseEvent):void
+            {
+                var answerMark:AnswerMark = e.currentTarget as AnswerMark;
+                setSelection(answerMark.vo.beginIndex, answerMark.vo.endIndex);
+            }
+
+            //----------------------特效设置部分-----------------------------------------------
+
+            private function delEffect(effect:EffectVO):void
+            {
+                for (var i:int = 0; i < effects.length; i++)
+                {
+                    if (effect == effects[i])
+                    {
+                        removeEffectMark(effects[i]);
+                        effects.splice(i, 1);
+                        break;
+                    }
+                }
+
+                this.dispatchEvent(new InTextEditerEvent(InTextEditerEvent.EDITER_CHANGE, keywords, questions, effects));
+            }
+
+            private function createEffectMark(effect:EffectVO):void
+            {
+                var effectMark:EffectMark = new EffectMark(effect);
+                effectMark.addEventListener(MouseEvent.CLICK, effectMark_clickHandler);
+                effectMarks.push(effectMark);
+                this.addElement(effectMark);
+            }
+
+            private function effectMark_clickHandler(e:MouseEvent):void
+            {
+                var effectMark:EffectMark = e.currentTarget as EffectMark;
+                setSelection(effectMark.vo.beginIndex, effectMark.vo.endIndex);
+            }
+
+            private function removeEffectMark(effect:EffectVO):void
+            {
+                for (var i:int = 0; i < effectMarks.length; i++)
+                {
+                    if (effectMarks[i].vo == effect)
+                    {
+                        effectMarks[i].removeEventListener(MouseEvent.CLICK, effectMark_clickHandler);
+                        this.removeElement(effectMarks[i]);
+                        effectMarks.splice(i, 1);
+                        break;
+                    }
+                }
+            }
+
+            private function updateEffectMark(effect:EffectVO):void
+            {
+                for (var i:int = 0; i < effectMarks.length; i++)
+                {
+                    if (effectMarks[i].vo == effect)
+                    {
+                        effectMarks[i].update(effect.beginIndex, effect.endIndex, textArea);
+                        break;
+                    }
+                }
+            }
+
+            //----------------------------公共方法---------------------------------------
+            /**
+             * 检查索引的范围是否被特效占用了
+             * 如果被占用了，返回flash
+             * 如果起始索引和结束索引都一样，返回该对象
+             * 如果没有被占用，返回true
+             *
+             */
+            public function checkEffect(beginIndex:int, endIndex:int):Object
+            {
+                var result:Object = true;
+
+                var i:int = 0;
+
+                for (i = 0; i < effects.length; i++)
+                {
+                    if (beginIndex == effects[i].beginIndex && endIndex == effects[i].endIndex)
+                    {
+                        result = effects[i];
+                        break;
+                    }
+                    else if (beginIndex > effects[i].beginIndex && beginIndex < effects[i].endIndex)
+                    {
+                        result = false;
+                        break;
+                    }
+                    else if (endIndex > effects[i].beginIndex && beginIndex < effects[i].endIndex)
+                    {
+                        result = false;
+                        break;
+                    }
+                }
+                return result;
+            }
+
+            /**
+             * 检查索引的范围是否被关键词句占用了
+             * 如果被占用了，返回flash
+             * 如果起始索引和结束索引都一样，返回该对象
+             * 如果没有被占用，返回true
+             */
+            public function checkKeyword(beginIndex:int, endIndex:int):Object
+            {
+                var result:Object = true;
+
+                var i:int = 0;
+
+                for (i = 0; i < keywords.length; i++)
+                {
+                    if (beginIndex == keywords[i].beginIndex && endIndex == keywords[i].endIndex)
+                    {
+                        result = keywords[i];
+                        break;
+                    }
+                    else if (beginIndex > keywords[i].beginIndex && beginIndex < keywords[i].endIndex)
+                    {
+                        result = false;
+                        break;
+                    }
+                    else if (endIndex > keywords[i].beginIndex && beginIndex < keywords[i].endIndex)
+                    {
+                        result = false;
+                        break;
+                    }
+                }
+
+                return result;
+            }
+
+            /**
+             * 更新标记的布局
+             *
+             *
+             */
+            public function updateMarks():void
+            {
+                textArea.validateNow();
+
+                var i:int = 0;
+
+                for (i = 0; i < effects.length; i++)
+                {
+                    updateEffectMark(effects[i]);
+                }
+
+                for (i = 0; i < keywords.length; i++)
+                {
+                    updateKeywordMark(keywords[i]);
+                }
+
+                for (i = 0; i < questions.length; i++)
+                {
+                    for (var j:int = 0; j < questions[i].answers.length; j++)
+                    {
+                        updateAnswerMark(questions[i].answers[j]);
+                    }
+                    updateQuestionMark(questions[i]);
+                }
+            }
+
+            public function clear():void
+            {
+                clearKeywordMarks();
+                clearEffectMarks();
+                clearQuestionMarks();
+                textArea.htmlText = "";
+            }
+
+            private function clearKeywordMarks():void
+            {
+                for (var i:int = 0; i < keywords.length; i++)
+                {
+                    removeKeywordMark(keywords[i]);
+                }
+            }
+
+            private function clearEffectMarks():void
+            {
+                for (var i:int = 0; i < effects.length; i++)
+                {
+                    removeEffectMark(effects[i]);
+                }
+            }
+
+            private function clearQuestionMarks():void
+            {
+                for (var i:int = 0; i < questions.length; i++)
+                {
+                    for (var j:int = 0; j < questions[i].answers.length; j++)
+                    {
+                        removeAnswerMark(questions[i].answers[j]);
+                    }
+                    removeQuestionMark(questions[i]);
+                }
+            }
+        ]]>
+    </fx:Script>
+
+    <fx:Declarations>
+        <!-- 将非可视元素（例如服务、值对象）放在此处 -->
+    </fx:Declarations>
+    <components:TextArea x="{paddingX}"
+                         y="10"
+                         id="textArea"
+                         focusAlpha="0"
+                         width="100%"
+                         height="100%"
+                         contentBackgroundAlpha="0"
+                         borderAlpha="0"
+                         contentBackgroundColor="#C03232"
+                         text="轻轻的我走了，
+						 正如我轻轻的来；
+						 我轻轻的招手，
+						 作别西天的云彩。
+						 
+						 那河畔的金柳，
+						 是夕阳中的新娘；
+						 波光里的艳影，
+						 在我的心头荡漾。
+						 
+						 软泥上的青荇，
+						 油油的在水底招摇；
+						 在康河的柔波里，
+						 我甘心做一条水草！"
+                         dropShadowVisible="false">
+    </components:TextArea>
+</s:Group>

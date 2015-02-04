@@ -1,0 +1,111 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:Group xmlns:fx="http://ns.adobe.com/mxml/2009"
+         xmlns:s="library://ns.adobe.com/flex/spark"
+         xmlns:mx="library://ns.adobe.com/flex/mx"
+         height="100%"
+         xmlns:views="itext.views.*">
+    <s:layout>
+        <s:VerticalLayout gap="0" />
+    </s:layout>
+    <fx:Declarations>
+        <!-- 将非可视元素（例如服务、值对象）放在此处 -->
+    </fx:Declarations>
+
+    <fx:Script>
+        <![CDATA[
+            import itext.components.ITextEditer;
+
+            import mx.events.CloseEvent;
+            import mx.managers.PopUpManager;
+
+            import spark.skins.spark.TabBarSkin;
+
+            private var ite:ITextEditer = null;
+
+            private var isPreviewing:Boolean = false;
+
+            public function manageInTextEditer(ite:ITextEditer):void
+            {
+                this.ite = ite;
+                bte.manageInTextEditer(ite);
+                een.manageInTextEditer(ite);
+                qae.manageInTextEditer(ite);
+				
+//				ee.manageInTextEditer(ite);
+//				ke.manageInTextEditer(ite);
+//				qe.manageInTextEditer(ite);
+            }
+
+            //预览按钮
+            private function btnPreview_clickHandler(e:MouseEvent):void
+            {
+                if (isPreviewing == false)
+                {
+                    isPreviewing = true;
+                    var previewITextWindow:PreviewITextWindow = new PreviewITextWindow();
+                    previewITextWindow.addEventListener(CloseEvent.CLOSE, previewITextWindow_closeHandler);
+                    previewITextWindow.show();
+                    previewITextWindow.setIText(ite.getIText());
+                    PopUpManager.centerPopUp(previewITextWindow);
+                }
+            }
+
+            private function previewITextWindow_closeHandler(e:CloseEvent):void
+            {
+                (e.currentTarget as PreviewITextWindow).removeEventListener(CloseEvent.CLOSE, previewITextWindow_closeHandler);
+                isPreviewing = false;
+            }
+        ]]>
+    </fx:Script>
+
+    <s:HGroup width="100%"
+              paddingLeft="10">
+        <s:TabBar dataProvider="{viewStackTools}" />
+        <s:HGroup horizontalAlign="right"
+                  width="100%">
+            <mx:Button disabledSkin="@Embed(source='./imgs/preview_disable.png')"
+                       upSkin="@Embed(source='./imgs/preview_normal.png')"
+                       downSkin="@Embed(source='./imgs/preview_down.png')"
+                       overSkin="@Embed(source='./imgs/preview_over.png')"
+                       toolTip="预览"
+                       id="btnPreview"
+                       click="btnPreview_clickHandler(event)" />
+        </s:HGroup>
+    </s:HGroup>
+    <mx:ViewStack paddingLeft="10"
+                  paddingBottom="10"
+                  borderStyle="outset"
+                  borderColor="0x000000"
+                  resizeToContent="true"
+                  width="100%"
+                  height="100%"
+                  id="viewStackTools"
+                  creationPolicy="all">
+        <s:NavigatorContent label="编辑"
+                            id="textEdit">
+            <views:BaseEdit id="bte" />
+        </s:NavigatorContent>
+        <s:NavigatorContent label="效果"
+                            id="effectNew">
+            <views:EffectEdit id="een" />
+        </s:NavigatorContent>
+        <s:NavigatorContent label="问答"
+                            id="qaEdit">
+            <views:QAEdit id="qae" />
+        </s:NavigatorContent>
+        <!--
+             <s:NavigatorContent label="预埋问题"
+             id="questionEdit">
+             <views:OldQuestionEdit id="qe" />
+             </s:NavigatorContent>
+             <s:NavigatorContent label="关键词句"
+             id="keyEdit">
+             <views:KeyEdit id="ke" />
+             </s:NavigatorContent>
+             <s:NavigatorContent label="特效设置"
+             id="effectEdit">
+             <views:OldEffectEdit id="ee" />
+             </s:NavigatorContent>
+        -->
+    </mx:ViewStack>
+</s:Group>

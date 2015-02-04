@@ -1,0 +1,263 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:Group xmlns:fx="http://ns.adobe.com/mxml/2009"
+         xmlns:s="library://ns.adobe.com/flex/spark"
+         xmlns:mx="library://ns.adobe.com/flex/mx"
+         width="125"
+         height="143"
+         creationComplete="this_creationCompleteHandler(event)">
+    <s:layout>
+        <s:BasicLayout />
+    </s:layout>
+    <fx:Declarations>
+
+    </fx:Declarations>
+
+    <fx:Script>
+        <![CDATA[
+            import com.jing.component.colorPicker.events.CustomColorPickerEvent;
+
+            import mx.core.FlexGlobals;
+            import mx.events.FlexEvent;
+            import mx.managers.PopUpManager;
+
+            import spark.primitives.Rect;
+
+            private var colorDataGroup1:Array = [0x000000, 0x444444, 0x666666, 0x999999, 0xcccccc, 0xeeeeee, 0xf3f3f3, 0xffffff];
+
+            private var colorDataGroup2:Array = [0xff0000, 0xff9900, 0xffff00, 0x00ff00, 0x00ffff, 0x0000ff, 0x9900ff, 0xff00ff];
+
+            private var colorDataGroup3:Array = [[0xf4cccc, 0xea9999, 0xe06666, 0xcc0000, 0x990000], [0xfce5cd, 0xf9cb9c, 0xf6b26b, 0xe69138, 0xb45f06], [0xfff2cc, 0xffe599, 0xffd966, 0xf1c232, 0xbf9000], [0xd9ead3, 0xb6d7a8, 0x93c47d, 0x6aa84f, 0x38761d], [0xd0e0e3, 0xa2c4c9, 0x76a5af, 0x45818e, 0x0b5394], [0xcfe2f3, 0x9fc5e8, 0x6fa8dc, 0x3d85c6, 0x0b5394], [0xd9d2e9, 0xb4a7d6, 0x8e7cc3, 0x674ea7, 0x351c75], [0xead1dc, 0xd5a6bd, 0xc27ba0, 0xa64d79, 0x741b47]]
+
+            private var ccpbb:CustomColorPickerBlockBorder = new CustomColorPickerBlockBorder();
+
+            private var _value:uint = 0;
+
+            private var _target:DisplayObject = null;
+
+            private var _selectedItem:CustomColorPickerBlock = null;
+
+            private var systemColorPickerBlock:CustomColorPickerBlock = new CustomColorPickerBlock(0x000000);
+
+            public function get value():uint
+            {
+                return _value;
+            }
+
+            public function set value(value:uint):void
+            {
+                _value = value;
+            }
+
+            protected function this_creationCompleteHandler(event:FlexEvent):void
+            {
+                bg.graphics.moveTo(0, this.height);
+                bg.graphics.beginFill(0xFFFFFF, 1);
+                bg.graphics.lineStyle(1, 0xa9a9a9);
+                bg.graphics.lineTo(0, 0);
+                bg.graphics.lineTo(this.width, 0);
+                bg.graphics.lineStyle(1, 0x555555);
+                bg.graphics.lineTo(this.width, this.height);
+                bg.graphics.lineTo(0, this.height);
+                bg.graphics.endFill();
+
+                var i:int = 0;
+                var j:int = 0;
+                var rectBlock:CustomColorPickerBlock;
+
+                autoColor.addChild(systemColorPickerBlock);
+
+                colorGroup1.graphics.beginFill(0x959595);
+                colorGroup1.graphics.drawRect(0, 0, colorGroup1.width, colorGroup1.height);
+                colorGroup1.graphics.endFill();
+
+                for (i = 0; i < colorDataGroup1.length; i++)
+                {
+                    rectBlock = new CustomColorPickerBlock(colorDataGroup1[i]);
+                    rectBlock.x = 1 + (14 * i);
+                    rectBlock.y = 1;
+                    colorGroup1.addChild(rectBlock);
+                }
+
+                colorGroup2.graphics.beginFill(0x959595);
+                colorGroup2.graphics.drawRect(0, 0, colorGroup2.width, colorGroup2.height);
+                colorGroup2.graphics.endFill();
+
+                for (i = 0; i < colorDataGroup2.length; i++)
+                {
+                    rectBlock = new CustomColorPickerBlock(colorDataGroup2[i]);
+                    rectBlock.x = 1 + (14 * i);
+                    rectBlock.y = 1;
+                    colorGroup2.addChild(rectBlock);
+                }
+
+
+                colorGroup3.graphics.beginFill(0x666666);
+                colorGroup3.graphics.drawRect(0, 0, colorGroup3.width, colorGroup3.height);
+                colorGroup3.graphics.endFill();
+
+                for (i = 0; i < colorDataGroup3.length; i++)
+                {
+                    var blockX:int = 1 + (14 * i);
+
+                    for (j = 0; j < colorDataGroup3[i].length; j++)
+                    {
+                        rectBlock = new CustomColorPickerBlock(colorDataGroup3[i][j]);
+                        rectBlock.x = blockX;
+                        rectBlock.y = 1 + (13 * j);
+                        colorGroup3.addChild(rectBlock);
+                    }
+                }
+
+                colorGroup1.addEventListener(MouseEvent.MOUSE_OVER, colorGroup_mouseOverHandler);
+                colorGroup2.addEventListener(MouseEvent.MOUSE_OVER, colorGroup_mouseOverHandler);
+                colorGroup3.addEventListener(MouseEvent.MOUSE_OVER, colorGroup_mouseOverHandler);
+
+                colorGroup1.addEventListener(MouseEvent.MOUSE_DOWN, colorGroup_mouseDownHandler);
+                colorGroup2.addEventListener(MouseEvent.MOUSE_DOWN, colorGroup_mouseDownHandler);
+                colorGroup3.addEventListener(MouseEvent.MOUSE_DOWN, colorGroup_mouseDownHandler);
+            }
+
+            private function colorGroup_mouseOverHandler(e:MouseEvent):void
+            {
+                if (e.target is CustomColorPickerBlock)
+                {
+                    e.currentTarget.addChild(ccpbb);
+                    ccpbb.x = e.target.x;
+                    ccpbb.y = e.target.y;
+                }
+            }
+
+            private function colorGroup_mouseDownHandler(e:MouseEvent):void
+            {
+                if (e.target is CustomColorPickerBlock)
+                {
+                    _selectedItem = e.target as CustomColorPickerBlock;
+                    changeSelectedColor();
+                }
+            }
+
+            protected function autoColorContainer_mouseDownHandler(event:MouseEvent):void
+            {
+                _selectedItem = systemColorPickerBlock as CustomColorPickerBlock;
+                changeSelectedColor();
+            }
+
+            private function changeSelectedColor():void
+            {
+                _value = _selectedItem.color;
+                this.dispatchEvent(new CustomColorPickerEvent(CustomColorPickerEvent.CHANGE_COLOR, _value));
+                close();
+            }
+
+            protected function autoColorContainer_rollOverHandler(event:MouseEvent):void
+            {
+                autoColor.addChild(ccpbb);
+                ccpbb.x = 0;
+                ccpbb.y = 0;
+            }
+
+            public function show(target:DisplayObject = null):void
+            {
+                _target = target;
+
+                if (this.stage == null)
+                {
+                    PopUpManager.addPopUp(this, FlexGlobals.topLevelApplication.document, false);
+
+                    stage.addEventListener(MouseEvent.MOUSE_UP, stage_mouseUpHandler);
+
+
+
+                    if (target != null)
+                    {
+                        var globalPoint:Point = target.localToGlobal(new Point(0, 0));
+                        this.x = globalPoint.x;
+
+                        if (globalPoint.y + target.height + this.height > stage.stageHeight)
+                        {
+                            this.y = globalPoint.y - this.height - 2;
+                        }
+                        else
+                        {
+                            this.y = globalPoint.y + target.height + 2;
+                        }
+                    }
+
+                    if (_selectedItem != null)
+                    {
+                        _selectedItem.parent.addChild(ccpbb);
+                        ccpbb.x = _selectedItem.x;
+                        ccpbb.y = _selectedItem.y;
+                    }
+                }
+                else
+                {
+                    close();
+                }
+            }
+
+            private function stage_mouseUpHandler(e:MouseEvent):void
+            {
+                if (this.hitTestPoint(stage.mouseX, stage.mouseY) || _target.hitTestPoint(stage.mouseX, stage.mouseY))
+                {
+                    return;
+                }
+
+                close();
+            }
+
+            public function close():void
+            {
+                if (this.stage != null)
+                {
+                    stage.removeEventListener(MouseEvent.MOUSE_UP, stage_mouseUpHandler);
+                    PopUpManager.removePopUp(this);
+                }
+            }
+        ]]>
+    </fx:Script>
+
+    <mx:UIComponent id="bg"
+                    width="100%"
+                    height="100%" />
+
+    <s:VGroup paddingLeft="6"
+              paddingBottom="6"
+              paddingRight="6"
+              paddingTop="6"
+              gap="5"
+              width="125"
+              height="143">
+        <s:BorderContainer id="autoColorContainer"
+                           borderColor="0x959595"
+                           height="19"
+                           width="100%"
+                           mouseChildren="false"
+                           rollOver="autoColorContainer_rollOverHandler(event)"
+                           mouseDown="autoColorContainer_mouseDownHandler(event)">
+            <s:HGroup verticalAlign="middle"
+                      paddingTop="2"
+                      paddingBottom="2"
+                      paddingLeft="2"
+                      paddingRight="2"
+                      width="100%">
+                <mx:UIComponent id="autoColor"
+                                width="13"
+                                height="13" />
+                <s:Label width="70%"
+                         textAlign="center"
+                         text="自动" />
+            </s:HGroup>
+        </s:BorderContainer>
+
+        <mx:UIComponent id="colorGroup1"
+                        width="100%"
+                        height="15" />
+        <mx:UIComponent id="colorGroup2"
+                        height="15"
+                        width="100%" />
+        <mx:UIComponent id="colorGroup3"
+                        height="67"
+                        width="100%" />
+    </s:VGroup>
+</s:Group>

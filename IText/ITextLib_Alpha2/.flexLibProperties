@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<flexLibProperties includeAllClasses="true" version="3">
+  <includeClasses>
+    <classEntry path="itext.views.ITextEditTools"/>
+    <classEntry path="itext.views.PreviewITextWindow"/>
+    <classEntry path="itext.framework.effects.ExtrusionEffect"/>
+    <classEntry path="itext.framework.effects.FlashingEffect"/>
+    <classEntry path="itext.tools.TextShadeBlock"/>
+    <classEntry path="itext.views.EffectEdit"/>
+    <classEntry path="itext.views.QAEdit"/>
+    <classEntry path="itext.views.editerElements.QAPrompting"/>
+    <classEntry path="itext.views.editerElements.QuestionInputBox"/>
+    <classEntry path="itext.views.editerElements.AnswerSetButton"/>
+    <classEntry path="itext.views.playerElements.ITextPlayerMenu"/>
+    <classEntry path="itext.events.MarkEvent"/>
+    <classEntry path="itext.skin.CustomColorButtonSkin"/>
+  </includeClasses>
+  <includeResources/>
+  <namespaceManifests/>
+</flexLibProperties>

@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<flexLibProperties includeAllClasses="true" version="3">
+  <includeClasses>
+    <classEntry path="itext.views.ITextEditTools"/>
+    <classEntry path="itext.views.PreviewITextWindow"/>
+    <classEntry path="itext.views.elements.effects.ExtrusionEffect"/>
+    <classEntry path="itext.views.elements.effects.FlashingEffect"/>
+    <classEntry path="itext.tools.TextShadeBlock"/>
+  </includeClasses>
+  <includeResources/>
+  <namespaceManifests/>
+</flexLibProperties>

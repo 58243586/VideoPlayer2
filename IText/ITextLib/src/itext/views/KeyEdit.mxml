@@ -1,0 +1,225 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:Group xmlns:fx="http://ns.adobe.com/mxml/2009" xmlns:s="library://ns.adobe.com/flex/spark" xmlns:mx="library://ns.adobe.com/flex/mx"
+         xmlns:views="itext.views.*">
+    <s:layout>
+        <s:BasicLayout />
+    </s:layout>
+
+    <fx:Script>
+        <![CDATA[
+            import itext.constants.EffectTypeConstant;
+            import itext.constants.TriggerConstant;
+            import itext.events.InTextEditerEvent;
+            import itext.framework.KeywordBorderFactory;
+            import itext.vo.KeywordVO;
+
+            import mx.collections.ArrayCollection;
+            import mx.events.ColorPickerEvent;
+
+            import spark.events.IndexChangeEvent;
+
+            private var inTextEditer:InTextEditer = null;
+
+            private var trigger:String = TriggerConstant.MOUSE_CLICK;
+
+            [Bindable]
+            private var borders:ArrayCollection = new ArrayCollection([{label: "无", value: ""}, {label: "下划线", value: KeywordBorderFactory.UNDERLINE}, {label: "双下划线", value: KeywordBorderFactory.DOUBLE_UNDERLINE}, {label: "边框", value: KeywordBorderFactory.BORDER}, {label: "背景框", value: KeywordBorderFactory.BACKGROUND}]);
+
+            //可否设置触发条件
+            [Bindable]
+            private var setTriggerEnable:Boolean = false;
+
+            public function manageInTextEditer(target:InTextEditer):void
+            {
+                inTextEditer = target;
+                inTextEditer.addEventListener(InTextEditerEvent.EDITER_CHANGE, inTextEditer_editerChangeHandler);
+                inTextEditer.addEventListener(InTextEditerEvent.TEXT_SELECTION, inTextEditer_textSelectionHandler);
+                comboBoxBorder.textInput.editable = false;
+				preBuriedList.update(inTextEditer.getKeywords(), inTextEditer.getQuestions(), inTextEditer.getEffects());
+            }
+
+            private function inTextEditer_textSelectionHandler(e:InTextEditerEvent):void
+            {
+                var checkKeyword:Object = inTextEditer.checkKeyword(inTextEditer.textArea.getTextField().selectionBeginIndex, inTextEditer.textArea.getTextField().selectionEndIndex);
+
+                if (checkKeyword is KeywordVO)
+                {
+                    var keyword:KeywordVO = checkKeyword as KeywordVO;
+                    colorPickerFont.selectedColor = keyword.fontColor;
+
+                    for (var i:int = 0; i < borders.length; i++)
+                    {
+                        if (borders[i].value == keyword.border)
+                        {
+                            comboBoxBorder.selectedItem = borders[i];
+                        }
+                    }
+                    colorPickerBorder.selectedColor = keyword.borderColor;
+                    setTriggerEnable = true;
+
+                    switch (keyword.trigger)
+                    {
+                        case TriggerConstant.MOUSE_CLICK:
+                            rbClick.selected = true;
+                            break;
+                        case TriggerConstant.MOUSE_OVER:
+                            rbOver.selected = true;
+                            break;
+                        case TriggerConstant.TIME:
+                            rbTime.selected = true;
+                            textInputDelay.text = keyword.param.toString();
+                            break;
+                    }
+                }
+                else if (checkKeyword == true)
+                {
+                    colorPickerFont.selectedColor = 0x000000;
+                    comboBoxBorder.selectedIndex = 0;
+                    colorPickerBorder.selectedColor = 0x000000;
+                    setTriggerEnable = false;
+                    rbClick.selected = true;
+                    textInputDelay.text = "0";
+                    colorPickerBorder.enabled = false;
+                }
+
+                preBuriedList.setSelect(inTextEditer.textArea.getTextField().selectionBeginIndex, inTextEditer.textArea.getTextField().selectionEndIndex);
+            }
+
+            private function inTextEditer_editerChangeHandler(e:InTextEditerEvent):void
+            {
+                preBuriedList.update(e.keywords, e.questions, e.effects);
+            }
+
+            protected function colorPickerFont_changeHandler(event:ColorPickerEvent):void
+            {
+                setTriggerEnable = true;
+                updateToEditer();
+            }
+
+            protected function colorPickerBorder_changeHandler(event:ColorPickerEvent):void
+            {
+                updateToEditer();
+            }
+
+            private function changeTrigger():void
+            {
+                if (rbClick.selected == true)
+                {
+                    trigger = TriggerConstant.MOUSE_CLICK;
+                }
+                else if (rbOver.selected == true)
+                {
+                    trigger = TriggerConstant.MOUSE_OVER;
+                }
+                else if (rbTime.selected == true)
+                {
+                    trigger = TriggerConstant.TIME;
+                }
+                updateToEditer();
+            }
+
+            protected function btnDelPreBuried_clickHandler(event:MouseEvent):void
+            {
+                if (preBuriedList.selectedItems != null)
+                {
+                    //缓存
+                    var delArray:Array = new Array();
+                    var i:int = 0;
+
+                    for (i = 0; i < preBuriedList.selectedItems.length; i++)
+                    {
+                        delArray.push(preBuriedList.selectedItems[i]);
+                    }
+
+                    for (i = 0; i < delArray.length; i++)
+                    {
+                        inTextEditer.delPreburied(delArray[i]);
+                    }
+                }
+            }
+
+            protected function textIinputDelay_clickHandler(event:Event):void
+            {
+                rbTime.selected = true;
+                trigger = TriggerConstant.TIME;
+                updateToEditer();
+            }
+
+            protected function textInputDelay_focusOutHandler(event:FocusEvent):void
+            {
+                updateToEditer();
+            }
+
+            private function updateToEditer():void
+            {
+                var delayTime:Number = 0;
+                delayTime = Number(textInputDelay.text);
+
+                var border:String = "";
+
+                if (comboBoxBorder.selectedItem != null)
+                {
+                    border = comboBoxBorder.selectedItem.value;
+                }
+                inTextEditer.setKeyword(uint(colorPickerFont.value), border, uint(colorPickerBorder.value), trigger, delayTime);
+            }
+
+            protected function comboBoxBorder_changeHandler(event:IndexChangeEvent):void
+            {
+                setTriggerEnable = true;
+                updateToEditer();
+
+                colorPickerBorder.enabled = (comboBoxBorder.selectedIndex != 0);
+            }
+        ]]>
+    </fx:Script>
+
+    <fx:Declarations>
+        <!-- 将非可视元素（例如服务、值对象）放在此处 -->
+    </fx:Declarations>
+
+
+
+    <s:HGroup verticalAlign="top">
+        <s:VGroup paddingRight="40">
+            <mx:Label text="触发内容" fontWeight="bold" />
+            <s:HGroup verticalAlign="middle">
+                <s:Label text="颜色" width="60" />
+                <mx:ColorPicker id="colorPickerFont" change="colorPickerFont_changeHandler(event)" />
+            </s:HGroup>
+            <s:HGroup verticalAlign="middle">
+                <s:Label text="边框样式" width="60" />
+                <s:ComboBox id="comboBoxBorder" dataProvider="{borders}" selectedIndex="0"
+                            width="60" contentBackgroundAlpha="1" change="comboBoxBorder_changeHandler(event)" />
+            </s:HGroup>
+            <s:HGroup verticalAlign="middle">
+                <s:Label text="边框颜色" width="60" />
+                <mx:ColorPicker id="colorPickerBorder" enabled="false" change="colorPickerBorder_changeHandler(event)" />
+            </s:HGroup>
+        </s:VGroup>
+        <s:VGroup paddingRight="50">
+            <mx:Label text="触发条件" fontWeight="bold" />
+            <s:HGroup verticalAlign="middle">
+                <s:RadioButton id="rbClick" label="鼠标单击" selected="true"
+                               enabled="{setTriggerEnable}" click="changeTrigger()" />
+            </s:HGroup>
+            <s:HGroup verticalAlign="middle">
+                <s:RadioButton id="rbOver" label="鼠标悬停" enabled="{setTriggerEnable}"
+                               click="changeTrigger()" />
+            </s:HGroup>
+            <s:HGroup verticalAlign="middle">
+                <s:RadioButton id="rbTime" label="定时" enabled="{setTriggerEnable}"
+                               click="changeTrigger()" />
+                <s:TextInput id="textInputDelay" maxChars="3" width="30"
+                             restrict="0-9" enabled="{setTriggerEnable}" click="textIinputDelay_clickHandler(event)"
+                             focusOut="textInputDelay_focusOutHandler(event)" />
+                <s:Label text="秒" />
+            </s:HGroup>
+        </s:VGroup>
+        <s:VGroup>
+            <mx:Label text="设置列表" fontWeight="bold" />
+            <views:PreBuriedList id="preBuriedList" height="54" width="300" />
+            <s:Button id="btnDelPreBuried" label="删除" click="btnDelPreBuried_clickHandler(event)" />
+        </s:VGroup>
+    </s:HGroup>
+</s:Group>
